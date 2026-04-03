@@ -1,4 +1,22 @@
+import { useState, useEffect } from 'react';
+
 export function Logo({ className = '', light = false }: { className?: string, light?: boolean }) {
+  const [logoUrl, setLogoUrl] = useState('');
+
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('rftech_general_settings');
+    if (savedSettings) {
+      const parsed = JSON.parse(savedSettings);
+      if (parsed.logoUrl) {
+        setLogoUrl(parsed.logoUrl);
+      }
+    }
+  }, []);
+
+  if (logoUrl) {
+    return <img src={logoUrl} alt="RF Tech Solutions Logo" className={`h-12 object-contain ${className}`} />;
+  }
+
   const textColor = light ? 'text-white' : 'text-[#003366]';
   const bgColor = light ? 'bg-white' : 'bg-[#003366]';
   

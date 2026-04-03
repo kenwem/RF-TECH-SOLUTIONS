@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings, Users, ArrowLeft, Plus, Edit2, Trash2, X, AlertTriangle, Briefcase } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, FileText, Settings, Users, ArrowLeft, Plus, Edit2, Trash2, X, AlertTriangle, Briefcase, LogOut, Upload } from 'lucide-react';
+import { auth, storage } from '../firebase';
+import { signOut } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { toast } from 'sonner';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -17,7 +21,18 @@ export default function AdminDashboard() {
   });
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
-  const [postFormData, setPostFormData] = useState({ title: '', category: '', date: '' });
+  const [postFormData, setPostFormData] = useState({ 
+    title: '', 
+    slug: '',
+    image: '', 
+    content: '',
+    status: 'Draft',
+    publishDate: '',
+    featured: false,
+    category: '',
+    tags: ''
+  });
+  const [activePostTab, setActivePostTab] = useState('content');
 
   // State for Services
   const [services, setServices] = useState(() => {
@@ -33,7 +48,7 @@ export default function AdminDashboard() {
   });
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
-  const [serviceFormData, setServiceFormData] = useState({ title: '', description: '' });
+  const [serviceFormData, setServiceFormData] = useState({ title: '', description: '', image: '' });
 
   // State for Projects (Our Work)
   const [projects, setProjects] = useState(() => {
@@ -54,18 +69,209 @@ export default function AdminDashboard() {
     const saved = localStorage.getItem('rftech_general_settings');
     if (saved) return JSON.parse(saved);
     return {
-      heroTitle: 'Empowering Your Digital Future',
+      heroTitle: 'Powering\nBusiness Growth',
       heroSubtitle: 'We build powerful websites, mobile apps, and digital solutions that help businesses grow, reach more customers, and succeed in the digital world.',
       email: 'contact@rftechsolutions.com',
       phone: '+234 813 433 2534',
       address: '98 Adatan Abeokuta, Ogun State Nigeria',
-      copyright: '© 2026 RF Tech Solutions. All Rights Reserved.'
+      copyright: '© 2026 RF Tech Solutions. All Rights Reserved.',
+      heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop',
+      logoUrl: ''
     };
   });
 
+  const [uploadingState, setUploadingState] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/admin/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'heroBgUrl' | 'logoUrl') => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 5MB.');
+      return;
+    }
+    
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+      toast.error('You must be logged in to upload images.');
+      return;
+    }
+
+    setUploadingState(field);
+    try {
+      const sanitizedFileName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      const storageRef = ref(storage, `uploads/${userId}/images/${Date.now()}_${sanitizedFileName}`);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', 
+          null,
+          (error) => reject(error),
+          () => resolve(null)
+        );
+      });
+
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      setGeneralSettings({ ...generalSettings, [field]: downloadURL });
+      toast.success('Image uploaded successfully! Remember to click Save Changes.');
+    } catch (error: any) {
+      console.error('Error uploading image (general):', error);
+      if (error.serverResponse) {
+        console.error('Server response:', error.serverResponse);
+      }
+      toast.error(`Failed to upload image: ${error.message || 'Unknown error'}`);
+    } finally {
+      setUploadingState(null);
+    }
+  };
+
+  const handleProjectImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 5MB.');
+      return;
+    }
+    
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+      toast.error('You must be logged in to upload images.');
+      return;
+    }
+
+    setUploadingState('project');
+    try {
+      const sanitizedFileName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      const storageRef = ref(storage, `uploads/${userId}/images/projects/${Date.now()}_${sanitizedFileName}`);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', 
+          null,
+          (error) => reject(error),
+          () => resolve(null)
+        );
+      });
+
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      setProjectFormData({ ...projectFormData, image: downloadURL });
+    } catch (error: any) {
+      console.error('Error uploading image (project):', error);
+      if (error.serverResponse) {
+        console.error('Server response:', error.serverResponse);
+      }
+      toast.error(`Failed to upload image: ${error.message || 'Unknown error'}`);
+    } finally {
+      setUploadingState(null);
+    }
+  };
+
+  const handlePostImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 5MB.');
+      return;
+    }
+    
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+      toast.error('You must be logged in to upload images.');
+      return;
+    }
+
+    setUploadingState('post');
+    try {
+      const sanitizedFileName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      const storageRef = ref(storage, `uploads/${userId}/images/posts/${Date.now()}_${sanitizedFileName}`);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', 
+          null,
+          (error) => reject(error),
+          () => resolve(null)
+        );
+      });
+
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      setPostFormData({ ...postFormData, image: downloadURL });
+    } catch (error: any) {
+      console.error('Error uploading image (post):', error);
+      if (error.serverResponse) {
+        console.error('Server response:', error.serverResponse);
+      }
+      toast.error(`Failed to upload image: ${error.message || 'Unknown error'}`);
+    } finally {
+      setUploadingState(null);
+    }
+  };
+
+  const handleServiceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 5MB.');
+      return;
+    }
+    
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+      toast.error('You must be logged in to upload images.');
+      return;
+    }
+
+    setUploadingState('service');
+    try {
+      const sanitizedFileName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      const storageRef = ref(storage, `uploads/${userId}/images/services/${Date.now()}_${sanitizedFileName}`);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', 
+          null,
+          (error) => reject(error),
+          () => resolve(null)
+        );
+      });
+
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      setServiceFormData({ ...serviceFormData, image: downloadURL });
+    } catch (error: any) {
+      console.error('Error uploading image (service):', error);
+      if (error.serverResponse) {
+        console.error('Server response:', error.serverResponse);
+      }
+      toast.error(`Failed to upload image: ${error.message || 'Unknown error'}`);
+    } finally {
+      setUploadingState(null);
+    }
+  };
+
   const handleSaveGeneralSettings = () => {
     localStorage.setItem('rftech_general_settings', JSON.stringify(generalSettings));
-    alert('Settings saved successfully!');
+    toast.success('Settings saved successfully!');
   };
 
   // Delete Modal State
@@ -76,12 +282,33 @@ export default function AdminDashboard() {
   const handleOpenPostModal = (post: any = null) => {
     if (post) {
       setEditingPost(post);
-      setPostFormData({ title: post.title, category: post.category, date: post.date });
+      setPostFormData({ 
+        title: post.title || '', 
+        slug: post.slug || '',
+        image: post.image || '',
+        content: post.content || '',
+        status: post.status || 'Draft',
+        publishDate: post.publishDate || post.date || '',
+        featured: post.featured || false,
+        category: post.category || '',
+        tags: post.tags || ''
+      });
     } else {
       setEditingPost(null);
       const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      setPostFormData({ title: '', category: '', date: today });
+      setPostFormData({ 
+        title: '', 
+        slug: '',
+        image: '',
+        content: '',
+        status: 'Draft',
+        publishDate: today,
+        featured: false,
+        category: '',
+        tags: ''
+      });
     }
+    setActivePostTab('content');
     setIsPostModalOpen(true);
   };
 
@@ -102,10 +329,14 @@ export default function AdminDashboard() {
   const handleOpenServiceModal = (service: any = null) => {
     if (service) {
       setEditingService(service);
-      setServiceFormData({ title: service.title, description: service.description });
+      setServiceFormData({ 
+        title: service.title, 
+        description: service.description, 
+        image: service.image || '' 
+      });
     } else {
       setEditingService(null);
-      setServiceFormData({ title: '', description: '' });
+      setServiceFormData({ title: '', description: '', image: '' });
     }
     setIsServiceModalOpen(true);
   };
@@ -234,11 +465,18 @@ export default function AdminDashboard() {
           </button>
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
-          <Link to="/" className="flex items-center gap-2 text-sm text-gray-500 hover:text-sky-600 transition-colors">
+        <div className="p-4 border-t border-gray-200 space-y-2">
+          <Link to="/" className="flex items-center gap-2 text-sm text-gray-500 hover:text-sky-600 transition-colors px-4 py-2">
             <ArrowLeft size={16} />
             Back to Website
           </Link>
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors px-4 py-2 rounded-lg"
+          >
+            <LogOut size={16} />
+            Logout
+          </button>
         </div>
       </aside>
 
@@ -418,12 +656,12 @@ export default function AdminDashboard() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Hero Title</label>
-                      <input 
-                        type="text" 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" 
+                      <textarea 
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none resize-none" 
+                        rows={2}
                         value={generalSettings.heroTitle}
                         onChange={(e) => setGeneralSettings({...generalSettings, heroTitle: e.target.value})}
-                      />
+                      ></textarea>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Hero Subtitle</label>
@@ -433,6 +671,64 @@ export default function AdminDashboard() {
                         value={generalSettings.heroSubtitle}
                         onChange={(e) => setGeneralSettings({...generalSettings, heroSubtitle: e.target.value})}
                       ></textarea>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Hero Background Image</label>
+                      <div className="flex items-center gap-4">
+                        {generalSettings.heroBgUrl && (
+                          <div className="relative">
+                            <img src={generalSettings.heroBgUrl} alt="Hero Background" className="w-24 h-16 object-cover rounded border border-gray-200" />
+                            <button 
+                              type="button" 
+                              onClick={() => setGeneralSettings({ ...generalSettings, heroBgUrl: '' })}
+                              className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
+                              title="Remove Image"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
+                        <label className="cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                          <Upload size={16} />
+                          {uploadingState === 'heroBgUrl' ? 'Uploading...' : 'Upload Image'}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleImageUpload(e, 'heroBgUrl')}
+                            disabled={uploadingState === 'heroBgUrl'}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Website Logo</label>
+                      <div className="flex items-center gap-4">
+                        {generalSettings.logoUrl && (
+                          <div className="relative">
+                            <img src={generalSettings.logoUrl} alt="Logo" className="w-auto h-8 object-contain bg-black p-1 rounded" />
+                            <button 
+                              type="button" 
+                              onClick={() => setGeneralSettings({ ...generalSettings, logoUrl: '' })}
+                              className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
+                              title="Remove Logo"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
+                        <label className="cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                          <Upload size={16} />
+                          {uploadingState === 'logoUrl' ? 'Uploading...' : 'Upload Logo'}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleImageUpload(e, 'logoUrl')}
+                            disabled={uploadingState === 'logoUrl'}
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -516,56 +812,220 @@ export default function AdminDashboard() {
       {/* Post Modal */}
       {isPostModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800">{editingPost ? 'Edit Post' : 'New Post'}</h3>
-              <button onClick={() => setIsPostModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={20} />
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-4">
+                <button type="button" onClick={() => setIsPostModalOpen(false)} className="text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1">
+                  <ArrowLeft size={16} /> Back
+                </button>
+                <h3 className="text-2xl font-bold text-gray-800">{editingPost ? 'Edit Post' : 'New Post'}</h3>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-500">{postFormData.status}</span>
+                <button type="submit" form="postForm" className="px-6 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors flex items-center gap-2">
+                  <FileText size={16} /> Save
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex border-b border-gray-100 px-6 shrink-0">
+              <button 
+                type="button" 
+                onClick={() => setActivePostTab('content')}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activePostTab === 'content' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                Content
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setActivePostTab('seo')}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activePostTab === 'seo' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                Seo
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setActivePostTab('preview')}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activePostTab === 'preview' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                Preview
               </button>
             </div>
-            <form onSubmit={handleSavePost} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input 
-                  type="text" 
-                  required
-                  value={postFormData.title}
-                  onChange={(e) => setPostFormData({...postFormData, title: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
-                  placeholder="Post title"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <input 
-                  type="text" 
-                  required
-                  value={postFormData.category}
-                  onChange={(e) => setPostFormData({...postFormData, category: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
-                  placeholder="e.g. Digital Marketing"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input 
-                  type="text" 
-                  required
-                  value={postFormData.date}
-                  onChange={(e) => setPostFormData({...postFormData, date: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
-                  placeholder="e.g. Oct 24, 2024"
-                />
-              </div>
-              <div className="pt-4 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsPostModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors">
-                  Save Post
-                </button>
-              </div>
-            </form>
+
+            <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+              <form id="postForm" onSubmit={handleSavePost} className="flex flex-col md:flex-row gap-6">
+                
+                {/* Main Content Area */}
+                <div className="flex-1 space-y-6">
+                  {activePostTab === 'content' && (
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={postFormData.title}
+                          onChange={(e) => setPostFormData({...postFormData, title: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                          placeholder="Post title"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Slug (URL)</label>
+                        <input 
+                          type="text" 
+                          value={postFormData.slug}
+                          onChange={(e) => setPostFormData({...postFormData, slug: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none bg-gray-50 text-gray-500"
+                          placeholder="auto-generated-slug"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL</label>
+                        <div className="flex gap-2 mb-2">
+                          <input 
+                            type="text" 
+                            value={postFormData.image}
+                            onChange={(e) => setPostFormData({...postFormData, image: e.target.value})}
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none bg-gray-50"
+                            placeholder="https://..."
+                          />
+                          <label className="cursor-pointer flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors border border-gray-300">
+                            <Upload size={16} />
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={handlePostImageUpload}
+                              disabled={uploadingState === 'post'}
+                            />
+                          </label>
+                        </div>
+                        {postFormData.image && (
+                          <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200 mt-2 relative">
+                            <img src={postFormData.image} alt="Cover Preview" className="w-full h-full object-cover" />
+                            <button 
+                              type="button" 
+                              onClick={() => setPostFormData({ ...postFormData, image: '' })}
+                              className="absolute top-2 right-2 bg-white text-red-500 rounded-full p-1.5 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
+                              title="Remove Image"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Content (HTML/Markdown)</label>
+                        <textarea 
+                          rows={12}
+                          value={postFormData.content}
+                          onChange={(e) => setPostFormData({...postFormData, content: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none font-mono text-sm bg-gray-800 text-gray-100 resize-y"
+                          placeholder="Write your story here..."
+                        ></textarea>
+                      </div>
+                    </div>
+                  )}
+
+                  {activePostTab === 'seo' && (
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                      <h4 className="font-medium text-gray-800 border-b pb-2">SEO Settings</h4>
+                      <p className="text-sm text-gray-500">Configure how your post appears in search engine results.</p>
+                      {/* Add SEO fields here if needed later */}
+                    </div>
+                  )}
+
+                  {activePostTab === 'preview' && (
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                      <h4 className="font-medium text-gray-800 border-b pb-2">Post Preview</h4>
+                      <div className="prose max-w-none">
+                        <h1>{postFormData.title || 'Untitled Post'}</h1>
+                        {postFormData.image && <img src={postFormData.image} alt="Preview" className="w-full rounded-lg my-4" />}
+                        <div dangerouslySetInnerHTML={{ __html: postFormData.content || '<p>No content yet.</p>' }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Sidebar */}
+                <div className="w-full md:w-80 space-y-6 shrink-0">
+                  {/* Publishing Card */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Publishing</h4>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <select 
+                        value={postFormData.status}
+                        onChange={(e) => setPostFormData({...postFormData, status: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                      >
+                        <option value="Draft">Draft</option>
+                        <option value="Published">Published</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Publish Date</label>
+                      <input 
+                        type="text" 
+                        value={postFormData.publishDate}
+                        onChange={(e) => setPostFormData({...postFormData, publishDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                        placeholder="DD/MM/YYYY, HH:MM AM"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <input 
+                        type="checkbox" 
+                        id="featured"
+                        checked={postFormData.featured}
+                        onChange={(e) => setPostFormData({...postFormData, featured: e.target.checked})}
+                        className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
+                      />
+                      <label htmlFor="featured" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Mark as Featured
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Taxonomy Card */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Taxonomy</h4>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <select 
+                        value={postFormData.category}
+                        onChange={(e) => setPostFormData({...postFormData, category: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                      >
+                        <option value="">Select a category...</option>
+                        <option value="Digital Marketing">Digital Marketing</option>
+                        <option value="Web Development">Web Development</option>
+                        <option value="Mobile Apps">Mobile Apps</option>
+                        <option value="Destinations">Destinations</option>
+                        <option value="Technology">Technology</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+                      <input 
+                        type="text" 
+                        value={postFormData.tags}
+                        onChange={(e) => setPostFormData({...postFormData, tags: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                        placeholder="e.g. react, seo, design"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -573,14 +1033,14 @@ export default function AdminDashboard() {
       {/* Service Modal */}
       {isServiceModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 shrink-0">
               <h3 className="text-lg font-bold text-gray-800">{editingService ? 'Edit Service' : 'New Service'}</h3>
               <button onClick={() => setIsServiceModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSaveService} className="p-6 space-y-4">
+            <form onSubmit={handleSaveService} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Service Title</label>
                 <input 
@@ -591,6 +1051,47 @@ export default function AdminDashboard() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
                   placeholder="e.g. Web Development"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Service Image</label>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-4">
+                    {serviceFormData.image && (
+                      <div className="relative">
+                        <img src={serviceFormData.image} alt="Service Preview" className="w-16 h-16 object-cover rounded border border-gray-200" />
+                        <button 
+                          type="button" 
+                          onClick={() => setServiceFormData({ ...serviceFormData, image: '' })}
+                          className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
+                          title="Remove Image"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                    <label className="cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                      <Upload size={16} />
+                      {uploadingState === 'service' ? 'Uploading...' : 'Upload Image'}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleServiceImageUpload}
+                        disabled={uploadingState === 'service'}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">OR</span>
+                    <input 
+                      type="url" 
+                      value={serviceFormData.image}
+                      onChange={(e) => setServiceFormData({...serviceFormData, image: e.target.value})}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                      placeholder="Paste Image URL here..."
+                    />
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -620,7 +1121,7 @@ export default function AdminDashboard() {
       {isProjectModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 shrink-0">
               <h3 className="text-lg font-bold text-gray-800">{editingProject ? 'Edit Project' : 'New Project'}</h3>
               <button onClick={() => setIsProjectModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
@@ -675,15 +1176,45 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                  <input 
-                    type="url" 
-                    required
-                    value={projectFormData.image}
-                    onChange={(e) => setProjectFormData({...projectFormData, image: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
-                    placeholder="https://images.unsplash.com/..."
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project Image</label>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-4">
+                      {projectFormData.image && (
+                        <div className="relative">
+                          <img src={projectFormData.image} alt="Project Preview" className="w-16 h-16 object-cover rounded border border-gray-200" />
+                          <button 
+                            type="button" 
+                            onClick={() => setProjectFormData({ ...projectFormData, image: '' })}
+                            className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
+                            title="Remove Image"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )}
+                      <label className="cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        <Upload size={16} />
+                        {uploadingState === 'project' ? 'Uploading...' : 'Upload Image'}
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={handleProjectImageUpload}
+                          disabled={uploadingState === 'project'}
+                        />
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">OR</span>
+                      <input 
+                        type="url" 
+                        value={projectFormData.image}
+                        onChange={(e) => setProjectFormData({...projectFormData, image: e.target.value})}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                        placeholder="Paste Image URL here..."
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>

@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from '../components/Logo';
-import { MapPin, Clock, Mail, Phone, Send, MessageCircle } from 'lucide-react';
+import { MapPin, Clock, Mail, Phone, Send, MessageCircle, Menu, X } from 'lucide-react';
 
 export default function Contact() {
   const [generalSettings, setGeneralSettings] = useState({
-    heroTitle: 'Empowering Your Digital Future',
+    heroTitle: 'Powering\nBusiness Growth',
     heroSubtitle: 'We build powerful websites, mobile apps, and digital solutions that help businesses grow, reach more customers, and succeed in the digital world.',
     email: 'contact@rftechsolutions.com',
     phone: '+234 813 433 2534',
     address: '98 Adatan Abeokuta, Ogun State Nigeria',
-    copyright: '© 2026 RF Tech Solutions. All Rights Reserved.'
+    copyright: '© 2026 RF Tech Solutions. All Rights Reserved.',
+    heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop'
   });
 
   const defaultServices = [
@@ -31,11 +32,7 @@ export default function Contact() {
 
     const savedServices = localStorage.getItem('rftech_services');
     if (savedServices) {
-      const parsedServices = JSON.parse(savedServices);
-      setServices(defaultServices.map(ds => {
-        const matchingSaved = parsedServices.find((ps: any) => ps.id === ds.id);
-        return matchingSaved ? { ...ds, ...matchingSaved } : ds;
-      }));
+      setServices(JSON.parse(savedServices));
     }
   }, []);
 
@@ -47,6 +44,7 @@ export default function Contact() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +76,16 @@ export default function Contact() {
             <Logo className="text-[12px] md:text-[16px]" light />
           </Link>
         </div>
+        
+        {/* Mobile Menu Toggle */}
+        <button 
+          className="md:hidden text-white z-50"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+
+        {/* Desktop Menu */}
         <div className="hidden md:flex gap-8 text-xs font-medium uppercase tracking-widest text-white/80">
           <Link to="/" className="hover:text-white transition-colors">Home</Link>
           <a href="/#about" className="hover:text-white transition-colors">About</a>
@@ -91,6 +99,18 @@ export default function Contact() {
             Schedule Consultation
           </Link>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {isMobileMenuOpen && (
+          <div className="absolute top-full left-0 w-full bg-[var(--c-bg)] border-t border-white/10 flex flex-col py-4 px-6 gap-4 md:hidden shadow-xl">
+            <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Home</Link>
+            <a href="/#about" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">About</a>
+            <a href="/#services" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Services</a>
+            <a href="/#blog" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Blog</a>
+            <Link to="/our-work" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Our Work</Link>
+            <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Contact</Link>
+          </div>
+        )}
       </nav>
 
       {/* MAIN CONTENT */}
