@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "Post": {
+      "title": "Blog Post",
+      "description": "A blog post containing content, image, and metadata.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the post" },
+        "content": { "type": "string", "description": "The full content of the post" },
+        "image": { "type": "string", "description": "The cover image URL" },
+        "category": { "type": "string", "description": "The category of the post" },
+        "date": { "type": "string", "description": "The publication date" },
+        "status": { "type": "string", "enum": ["Draft", "Published"] }
+      },
+      "required": ["title", "content"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a blog post.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the user who commented" },
+        "userEmail": { "type": "string", "description": "The email of the user who commented" },
+        "userName": { "type": "string", "description": "The name of the user who commented" },
+        "text": { "type": "string", "description": "The comment text" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the comment was created" },
+        "status": { "type": "string", "enum": ["pending", "approved"], "description": "The moderation status" }
+      },
+      "required": ["userId", "text", "status"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "A like on a blog post.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the user who liked" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the like was created" }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Collection of blog posts"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Subcollection of comments for a specific post"
+    },
+    "/posts/{postId}/likes/{userId}": {
+      "schema": { "$ref": "#/entities/Like" },
+      "description": "Subcollection of likes for a specific post"
+    }
+  }
+}

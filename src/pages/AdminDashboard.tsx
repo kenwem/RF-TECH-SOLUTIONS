@@ -1,24 +1,151 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings, Users, ArrowLeft, Plus, Edit2, Trash2, X, AlertTriangle, Briefcase, LogOut, Upload } from 'lucide-react';
-import { auth, storage } from '../firebase';
-import { signOut } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { LayoutDashboard, FileText, Settings, Users, ArrowLeft, Plus, Edit2, Trash2, X, AlertTriangle, Briefcase, LogOut, Upload, MessageSquare, Check, Trash } from 'lucide-react';
+import { auth, storage, db } from '../firebase';
+import { signOut, onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
+import { ref, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { onSnapshot, doc, updateDoc, deleteDoc, collection, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { cleanFirebaseError } from '../lib/errorUtils';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // State for Comments
+  const [allComments, setAllComments] = useState<any[]>([]);
+  const [loadingComments, setLoadingComments] = useState(true);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setLoadingComments(false);
+        return;
+      }
+      
+      setUser(firebaseUser);
+      console.log("Auth State Change:", {
+        email: firebaseUser.email,
+        emailVerified: firebaseUser.emailVerified,
+        uid: firebaseUser.uid
+      });
+      const adminEmail = 'kenwem@yahoo.com';
+      const userEmail = firebaseUser.email?.toLowerCase().trim();
+      if (userEmail !== adminEmail.toLowerCase().trim()) {
+        console.warn("User is not admin:", userEmail);
+        setLoadingComments(false);
+        return;
+      }
+
+      console.log("Fetching comments for admin:", firebaseUser.email);
+      
+      const fetchCommentsManually = async () => {
+        try {
+          const postsRef = collection(db, 'sites/siteA/posts');
+          const postsSnapshot = await getDocs(postsRef);
+          const allFetchedComments: any[] = [];
+          
+          for (const postDoc of postsSnapshot.docs) {
+            const commentsRef = collection(db, `sites/siteA/posts/${postDoc.id}/comments`);
+            try {
+              const commentsSnapshot = await getDocs(commentsRef);
+              commentsSnapshot.docs.forEach(cDoc => {
+                allFetchedComments.push({
+                  id: cDoc.id,
+                  postId: postDoc.id,
+                  path: cDoc.ref.path,
+                  ...cDoc.data()
+                });
+              });
+            } catch (postErr: any) {
+              console.warn(`Failed to fetch comments for post ${postDoc.id}:`, postErr);
+            }
+          }
+          
+          const sortedComments = allFetchedComments.sort((a: any, b: any) => {
+            const dateA = a.createdAt?.toDate() || new Date(0);
+            const dateB = b.createdAt?.toDate() || new Date(0);
+            return dateB.getTime() - dateA.getTime();
+          });
+          
+          setAllComments(sortedComments);
+          setLoadingComments(false);
+        } catch (err: any) {
+          console.error("Manual fetch failed:", err);
+          setLoadingComments(false);
+          toast.error("Failed to load comments: " + err.message);
+        }
+      };
+
+      fetchCommentsManually();
+      
+      // Fetch Posts
+      const unsubscribePosts = onSnapshot(collection(db, 'sites/siteA/posts'), (snapshot) => {
+        const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setPosts(fetchedPosts);
+      });
+
+      // Fetch Services
+      const unsubscribeServices = onSnapshot(collection(db, 'sites/siteA/services'), (snapshot) => {
+        const fetchedServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setServices(fetchedServices);
+      });
+
+      // Fetch Projects
+      const unsubscribeProjects = onSnapshot(collection(db, 'sites/siteA/projects'), (snapshot) => {
+        const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProjects(fetchedProjects);
+      });
+
+      // Fetch General Settings
+      const unsubscribeSettings = onSnapshot(doc(db, 'sites/siteA/settings/general'), (docSnap) => {
+        if (docSnap.exists()) {
+          setGeneralSettings(docSnap.data());
+        }
+      });
+
+      // We'll also set up a simple interval or just rely on manual refresh for now 
+      // as the user requested "simple logic like posts fetching"
+      const interval = setInterval(fetchCommentsManually, 30000); // Refresh every 30s
+
+      return () => {
+        clearInterval(interval);
+        unsubscribePosts();
+        unsubscribeServices();
+        unsubscribeProjects();
+        unsubscribeSettings();
+      };
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  const handleApproveComment = async (commentPath: string) => {
+    try {
+      const commentRef = doc(db, commentPath);
+      await updateDoc(commentRef, { status: 'approved' });
+      toast.success('Comment approved!');
+    } catch (error) {
+      console.error("Error approving comment:", error);
+      toast.error(cleanFirebaseError(error instanceof Error ? error.message : 'Failed to approve comment'));
+    }
+  };
+
+  const handleDeleteComment = async (commentPath: string) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      const commentRef = doc(db, commentPath);
+      await deleteDoc(commentRef);
+      toast.success('Comment deleted!');
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast.error(cleanFirebaseError(error instanceof Error ? error.message : 'Failed to delete comment'));
+    }
+  };
+
   // State for Posts
-  const [posts, setPosts] = useState(() => {
-    const saved = localStorage.getItem('rftech_posts');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, title: '10 SEO Strategies to Dominate Search Rankings in 2026', category: 'Digital Marketing', date: 'Oct 24, 2024' },
-      { id: 2, title: 'Why Your Business Needs a Custom Web Application', category: 'Web Development', date: 'Oct 18, 2024' },
-      { id: 3, title: 'The Future of Cross-Platform Mobile Development', category: 'Mobile Apps', date: 'Oct 12, 2024' },
-    ];
-  });
+  const [posts, setPosts] = useState<any[]>([]);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
   const [postFormData, setPostFormData] = useState({ 
@@ -35,49 +162,27 @@ export default function AdminDashboard() {
   const [activePostTab, setActivePostTab] = useState('content');
 
   // State for Services
-  const [services, setServices] = useState(() => {
-    const saved = localStorage.getItem('rftech_services');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, title: 'Web Development', description: 'Custom web applications, e-commerce platforms, and corporate websites built with modern technologies.' },
-      { id: 2, title: 'Mobile App Development', description: 'Native and cross-platform mobile applications that provide seamless user experiences.' },
-      { id: 3, title: 'Desktop Application Development', description: 'Robust and high-performance desktop applications tailored for your enterprise needs.' },
-      { id: 4, title: 'UI/UX Design', description: 'Intuitive and visually stunning designs that enhance user satisfaction.' },
-      { id: 5, title: 'Digital Marketing', description: 'Comprehensive digital marketing strategies including Search Engine Optimization (SEO), Social Media Management, and compelling Content Writing.' }
-    ];
-  });
+  const [services, setServices] = useState<any[]>([]);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
   const [serviceFormData, setServiceFormData] = useState({ title: '', description: '', image: '' });
 
   // State for Projects (Our Work)
-  const [projects, setProjects] = useState(() => {
-    const saved = localStorage.getItem('rftech_projects');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, title: 'E-Commerce Platform', category: 'Web Development', description: 'A full-featured e-commerce platform with inventory management, payment processing, and user analytics.', image: 'https://images.unsplash.com/photo-1661956602116-aa6865609028?q=80&w=2664&auto=format&fit=crop', link: 'https://example.com', type: 'web' },
-      { id: 2, title: 'Fitness Tracking App', category: 'Mobile App', description: 'A cross-platform mobile application for tracking workouts, nutrition, and connecting with personal trainers.', image: 'https://images.unsplash.com/photo-1526498460520-4c246339dccb?q=80&w=2670&auto=format&fit=crop', link: 'https://example.com', type: 'mobile' },
-      { id: 3, title: 'Enterprise ERP System', category: 'Desktop App', description: 'A comprehensive desktop application for managing enterprise resources, HR, and financial reporting.', image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop', link: 'https://example.com', type: 'desktop' }
-    ];
-  });
+  const [projects, setProjects] = useState<any[]>([]);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [projectFormData, setProjectFormData] = useState({ title: '', category: '', description: '', image: '', link: '', type: 'web' });
 
   // State for General Settings
-  const [generalSettings, setGeneralSettings] = useState(() => {
-    const saved = localStorage.getItem('rftech_general_settings');
-    if (saved) return JSON.parse(saved);
-    return {
-      heroTitle: 'Powering\nBusiness Growth',
-      heroSubtitle: 'We build powerful websites, mobile apps, and digital solutions that help businesses grow, reach more customers, and succeed in the digital world.',
-      email: 'contact@rftechsolutions.com',
-      phone: '+234 813 433 2534',
-      address: '98 Adatan Abeokuta, Ogun State Nigeria',
-      copyright: '© 2026 RF Tech Solutions. All Rights Reserved.',
-      heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop',
-      logoUrl: ''
-    };
+  const [generalSettings, setGeneralSettings] = useState<any>({
+    heroTitle: 'Powering\nBusiness Growth',
+    heroSubtitle: 'We build powerful websites, mobile apps, and digital solutions that help businesses grow, reach more customers, and succeed in the digital world.',
+    email: 'contact@rftechsolutions.com',
+    phone: '+234 813 433 2534',
+    address: '98 Adatan Abeokuta, Ogun State Nigeria',
+    copyright: '© 2026 RF Tech Solutions. All Rights Reserved.',
+    heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop',
+    logoUrl: ''
   });
 
   const [uploadingState, setUploadingState] = useState<string | null>(null);
@@ -96,8 +201,8 @@ export default function AdminDashboard() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File is too large. Maximum size is 5MB.');
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 1MB.');
       return;
     }
     
@@ -131,7 +236,7 @@ export default function AdminDashboard() {
       if (error.serverResponse) {
         console.error('Server response:', error.serverResponse);
       }
-      toast.error(`Failed to upload image: ${error.message || 'Unknown error'}`);
+      toast.error(`Failed to upload image: ${cleanFirebaseError(error.message)}`);
     } finally {
       setUploadingState(null);
     }
@@ -141,8 +246,8 @@ export default function AdminDashboard() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File is too large. Maximum size is 5MB.');
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 1MB.');
       return;
     }
     
@@ -175,7 +280,7 @@ export default function AdminDashboard() {
       if (error.serverResponse) {
         console.error('Server response:', error.serverResponse);
       }
-      toast.error(`Failed to upload image: ${error.message || 'Unknown error'}`);
+      toast.error(`Failed to upload image: ${cleanFirebaseError(error.message)}`);
     } finally {
       setUploadingState(null);
     }
@@ -185,8 +290,8 @@ export default function AdminDashboard() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File is too large. Maximum size is 5MB.');
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 1MB.');
       return;
     }
     
@@ -219,7 +324,7 @@ export default function AdminDashboard() {
       if (error.serverResponse) {
         console.error('Server response:', error.serverResponse);
       }
-      toast.error(`Failed to upload image: ${error.message || 'Unknown error'}`);
+      toast.error(`Failed to upload image: ${cleanFirebaseError(error.message)}`);
     } finally {
       setUploadingState(null);
     }
@@ -229,8 +334,8 @@ export default function AdminDashboard() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File is too large. Maximum size is 5MB.');
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 1MB.');
       return;
     }
     
@@ -263,20 +368,25 @@ export default function AdminDashboard() {
       if (error.serverResponse) {
         console.error('Server response:', error.serverResponse);
       }
-      toast.error(`Failed to upload image: ${error.message || 'Unknown error'}`);
+      toast.error(`Failed to upload image: ${cleanFirebaseError(error.message)}`);
     } finally {
       setUploadingState(null);
     }
   };
 
-  const handleSaveGeneralSettings = () => {
-    localStorage.setItem('rftech_general_settings', JSON.stringify(generalSettings));
-    toast.success('Settings saved successfully!');
+  const handleSaveGeneralSettings = async () => {
+    try {
+      await setDoc(doc(db, 'sites/siteA/settings/general'), generalSettings);
+      toast.success('Settings saved successfully!');
+    } catch (error: any) {
+      console.error('Error saving settings:', error);
+      toast.error(cleanFirebaseError(error.message));
+    }
   };
 
   // Delete Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{id: number, type: 'post' | 'service' | 'project'} | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{id: string, type: 'post' | 'service' | 'project'} | null>(null);
 
   // Post Handlers
   const handleOpenPostModal = (post: any = null) => {
@@ -312,17 +422,22 @@ export default function AdminDashboard() {
     setIsPostModalOpen(true);
   };
 
-  const handleSavePost = (e: React.FormEvent) => {
+  const handleSavePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    let updatedPosts;
-    if (editingPost) {
-      updatedPosts = posts.map((p: any) => p.id === editingPost.id ? { ...p, ...postFormData } : p);
-    } else {
-      updatedPosts = [...posts, { id: Date.now(), ...postFormData }];
+    try {
+      if (editingPost) {
+        await setDoc(doc(db, 'sites/siteA/posts', editingPost.id), postFormData);
+        toast.success('Post updated successfully!');
+      } else {
+        const newPostRef = doc(collection(db, 'sites/siteA/posts'));
+        await setDoc(newPostRef, { ...postFormData, createdAt: serverTimestamp() });
+        toast.success('Post created successfully!');
+      }
+      setIsPostModalOpen(false);
+    } catch (error: any) {
+      console.error('Error saving post:', error);
+      toast.error(cleanFirebaseError(error.message));
     }
-    setPosts(updatedPosts);
-    localStorage.setItem('rftech_posts', JSON.stringify(updatedPosts));
-    setIsPostModalOpen(false);
   };
 
   // Service Handlers
@@ -341,17 +456,22 @@ export default function AdminDashboard() {
     setIsServiceModalOpen(true);
   };
 
-  const handleSaveService = (e: React.FormEvent) => {
+  const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
-    let updatedServices;
-    if (editingService) {
-      updatedServices = services.map((s: any) => s.id === editingService.id ? { ...s, ...serviceFormData } : s);
-    } else {
-      updatedServices = [...services, { id: Date.now(), ...serviceFormData }];
+    try {
+      if (editingService) {
+        await setDoc(doc(db, 'sites/siteA/services', editingService.id), serviceFormData);
+        toast.success('Service updated successfully!');
+      } else {
+        const newServiceRef = doc(collection(db, 'sites/siteA/services'));
+        await setDoc(newServiceRef, { ...serviceFormData, createdAt: serverTimestamp() });
+        toast.success('Service created successfully!');
+      }
+      setIsServiceModalOpen(false);
+    } catch (error: any) {
+      console.error('Error saving service:', error);
+      toast.error(cleanFirebaseError(error.message));
     }
-    setServices(updatedServices);
-    localStorage.setItem('rftech_services', JSON.stringify(updatedServices));
-    setIsServiceModalOpen(false);
   };
 
   // Project Handlers
@@ -373,39 +493,40 @@ export default function AdminDashboard() {
     setIsProjectModalOpen(true);
   };
 
-  const handleSaveProject = (e: React.FormEvent) => {
+  const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    let updatedProjects;
-    if (editingProject) {
-      updatedProjects = projects.map((p: any) => p.id === editingProject.id ? { ...p, ...projectFormData } : p);
-    } else {
-      updatedProjects = [...projects, { id: Date.now(), ...projectFormData }];
+    try {
+      if (editingProject) {
+        await setDoc(doc(db, 'sites/siteA/projects', editingProject.id), projectFormData);
+        toast.success('Project updated successfully!');
+      } else {
+        const newProjectRef = doc(collection(db, 'sites/siteA/projects'));
+        await setDoc(newProjectRef, { ...projectFormData, createdAt: serverTimestamp() });
+        toast.success('Project created successfully!');
+      }
+      setIsProjectModalOpen(false);
+    } catch (error: any) {
+      console.error('Error saving project:', error);
+      toast.error(cleanFirebaseError(error.message));
     }
-    setProjects(updatedProjects);
-    localStorage.setItem('rftech_projects', JSON.stringify(updatedProjects));
-    setIsProjectModalOpen(false);
   };
 
   // Delete Handlers
-  const confirmDelete = (id: number, type: 'post' | 'service' | 'project') => {
+  const confirmDelete = (id: string, type: 'post' | 'service' | 'project') => {
     setItemToDelete({ id, type });
     setIsDeleteModalOpen(true);
   };
 
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (itemToDelete) {
-      if (itemToDelete.type === 'post') {
-        const updatedPosts = posts.filter((p: any) => p.id !== itemToDelete.id);
-        setPosts(updatedPosts);
-        localStorage.setItem('rftech_posts', JSON.stringify(updatedPosts));
-      } else if (itemToDelete.type === 'service') {
-        const updatedServices = services.filter((s: any) => s.id !== itemToDelete.id);
-        setServices(updatedServices);
-        localStorage.setItem('rftech_services', JSON.stringify(updatedServices));
-      } else if (itemToDelete.type === 'project') {
-        const updatedProjects = projects.filter((p: any) => p.id !== itemToDelete.id);
-        setProjects(updatedProjects);
-        localStorage.setItem('rftech_projects', JSON.stringify(updatedProjects));
+      try {
+        const collectionName = itemToDelete.type === 'post' ? 'posts' : 
+                             itemToDelete.type === 'service' ? 'services' : 'projects';
+        await deleteDoc(doc(db, `sites/siteA/${collectionName}`, itemToDelete.id));
+        toast.success(`${itemToDelete.type.charAt(0).toUpperCase() + itemToDelete.type.slice(1)} deleted successfully!`);
+      } catch (error: any) {
+        console.error('Error deleting item:', error);
+        toast.error(cleanFirebaseError(error.message));
       }
     }
     setIsDeleteModalOpen(false);
@@ -463,6 +584,20 @@ export default function AdminDashboard() {
             <Users size={18} />
             Users
           </button>
+          <button 
+            onClick={() => setActiveTab('comments')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'comments' ? 'bg-sky-50 text-sky-600' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <MessageSquare size={18} />
+            <div className="flex-1 flex items-center justify-between">
+              <span>Comments</span>
+              {allComments.filter(c => c.status === 'pending').length > 0 && (
+                <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {allComments.filter(c => c.status === 'pending').length}
+                </span>
+              )}
+            </div>
+          </button>
         </nav>
 
         <div className="p-4 border-t border-gray-200 space-y-2">
@@ -483,14 +618,42 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
+          {user && !user.emailVerified && (
+            <div className="mb-8 bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-rose-800">Email Not Verified</h3>
+                  <p className="text-xs text-rose-600">Please verify your email to ensure full admin access to Firestore.</p>
+                </div>
+              </div>
+              <button 
+                onClick={async () => {
+                  try {
+                    await sendEmailVerification(user);
+                    toast.success("Verification email sent!");
+                  } catch (err: any) {
+                    toast.error(cleanFirebaseError(err.message));
+                  }
+                }}
+                className="bg-rose-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-rose-700 transition-colors"
+              >
+                Resend Verification Email
+              </button>
+            </div>
+          )}
           
           {activeTab === 'dashboard' && (
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Dashboard Overview</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="text-gray-500 text-sm font-medium mb-2">Total Views</div>
-                  <div className="text-3xl font-bold text-gray-800">12,450</div>
+                  <div className="text-gray-500 text-sm font-medium mb-2">Pending Comments</div>
+                  <div className={`text-3xl font-bold ${allComments.filter(c => c.status === 'pending').length > 0 ? 'text-amber-600' : 'text-gray-800'}`}>
+                    {allComments.filter(c => c.status === 'pending').length}
+                  </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                   <div className="text-gray-500 text-sm font-medium mb-2">Active Services</div>
@@ -500,25 +663,40 @@ export default function AdminDashboard() {
                   <div className="text-gray-500 text-sm font-medium mb-2">Blog Posts</div>
                   <div className="text-3xl font-bold text-gray-800">{posts.length}</div>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="text-gray-500 text-sm font-medium mb-2">Projects</div>
-                  <div className="text-3xl font-bold text-gray-800">{projects.length}</div>
-                </div>
               </div>
               
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Recent Activity</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Recent Comments</h3>
                 <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                      <div>
-                        <div className="text-sm font-medium text-gray-800">New contact form submission</div>
-                        <div className="text-xs text-gray-500">From: john@example.com</div>
+                  {allComments.length > 0 ? (
+                    allComments.slice(0, 5).map((comment) => (
+                      <div key={comment.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                        <div>
+                          <div className="text-sm font-medium text-gray-800">{comment.userName}</div>
+                          <div className="text-xs text-gray-500 line-clamp-1">{comment.text}</div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${comment.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {comment.status}
+                          </span>
+                          <div className="text-xs text-gray-400">
+                            {comment.createdAt?.toDate().toLocaleDateString()}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-400">2 hours ago</div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-400 text-sm">No recent activity</div>
+                  )}
                 </div>
+                {allComments.length > 5 && (
+                  <button 
+                    onClick={() => setActiveTab('comments')}
+                    className="w-full mt-4 text-center text-sm text-sky-600 font-medium hover:text-sky-700"
+                  >
+                    View All Comments
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -674,60 +852,84 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Hero Background Image</label>
-                      <div className="flex items-center gap-4">
-                        {generalSettings.heroBgUrl && (
-                          <div className="relative">
-                            <img src={generalSettings.heroBgUrl} alt="Hero Background" className="w-24 h-16 object-cover rounded border border-gray-200" />
-                            <button 
-                              type="button" 
-                              onClick={() => setGeneralSettings({ ...generalSettings, heroBgUrl: '' })}
-                              className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
-                              title="Remove Image"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        )}
-                        <label className="cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                          <Upload size={16} />
-                          {uploadingState === 'heroBgUrl' ? 'Uploading...' : 'Upload Image'}
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-4">
+                          {generalSettings.heroBgUrl && (
+                            <div className="relative">
+                              <img src={generalSettings.heroBgUrl} alt="Hero Background" className="w-24 h-16 object-cover rounded border border-gray-200" />
+                              <button 
+                                type="button" 
+                                onClick={() => setGeneralSettings({ ...generalSettings, heroBgUrl: '' })}
+                                className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
+                                title="Remove Image"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          )}
+                          <label className="cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            <Upload size={16} />
+                            {uploadingState === 'heroBgUrl' ? 'Uploading...' : 'Upload Image'}
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => handleImageUpload(e, 'heroBgUrl')}
+                              disabled={uploadingState === 'heroBgUrl'}
+                            />
+                          </label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">OR</span>
                           <input 
-                            type="file" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={(e) => handleImageUpload(e, 'heroBgUrl')}
-                            disabled={uploadingState === 'heroBgUrl'}
+                            type="url" 
+                            value={generalSettings.heroBgUrl}
+                            onChange={(e) => setGeneralSettings({...generalSettings, heroBgUrl: e.target.value})}
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                            placeholder="Paste Hero Background URL here..."
                           />
-                        </label>
+                        </div>
                       </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Website Logo</label>
-                      <div className="flex items-center gap-4">
-                        {generalSettings.logoUrl && (
-                          <div className="relative">
-                            <img src={generalSettings.logoUrl} alt="Logo" className="w-auto h-8 object-contain bg-black p-1 rounded" />
-                            <button 
-                              type="button" 
-                              onClick={() => setGeneralSettings({ ...generalSettings, logoUrl: '' })}
-                              className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
-                              title="Remove Logo"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        )}
-                        <label className="cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                          <Upload size={16} />
-                          {uploadingState === 'logoUrl' ? 'Uploading...' : 'Upload Logo'}
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-4">
+                          {generalSettings.logoUrl && (
+                            <div className="relative">
+                              <img src={generalSettings.logoUrl} alt="Logo" className="w-auto h-8 object-contain bg-black p-1 rounded" />
+                              <button 
+                                type="button" 
+                                onClick={() => setGeneralSettings({ ...generalSettings, logoUrl: '' })}
+                                className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md border border-gray-200 hover:bg-red-50 transition-colors"
+                                title="Remove Logo"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          )}
+                          <label className="cursor-pointer flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            <Upload size={16} />
+                            {uploadingState === 'logoUrl' ? 'Uploading...' : 'Upload Logo'}
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => handleImageUpload(e, 'logoUrl')}
+                              disabled={uploadingState === 'logoUrl'}
+                            />
+                          </label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">OR</span>
                           <input 
-                            type="file" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={(e) => handleImageUpload(e, 'logoUrl')}
-                            disabled={uploadingState === 'logoUrl'}
+                            type="url" 
+                            value={generalSettings.logoUrl}
+                            onChange={(e) => setGeneralSettings({...generalSettings, logoUrl: e.target.value})}
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                            placeholder="Paste Logo URL here..."
                           />
-                        </label>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -802,6 +1004,102 @@ export default function AdminDashboard() {
                 <p className="text-gray-500 text-sm max-w-md mx-auto">
                   User management features will be available once authentication is fully integrated with the backend.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'comments' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">Comment Moderation</h2>
+                  {user && (
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-xs text-gray-400">
+                        Logged in as: <span className="font-mono text-sky-600">{user.email}</span>
+                      </p>
+                      {!user.emailVerified && (
+                        <div className="flex items-center gap-2">
+                          <span className="bg-rose-100 text-rose-600 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <AlertTriangle size={10} /> Not Verified
+                          </span>
+                          <button 
+                            onClick={async () => {
+                              try {
+                                await sendEmailVerification(user);
+                                toast.success("Verification email sent!");
+                              } catch (err: any) {
+                                toast.error(cleanFirebaseError(err.message));
+                              }
+                            }}
+                            className="text-[10px] text-sky-600 hover:underline"
+                          >
+                            Resend Email
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div> {allComments.filter(c => c.status === 'pending').length} Pending</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> {allComments.filter(c => c.status === 'approved').length} Approved</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                {loadingComments ? (
+                  <div className="p-12 text-center text-gray-500">Loading comments...</div>
+                ) : allComments.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {allComments.map((comment) => (
+                      <div key={comment.id} className={`p-6 transition-colors hover:bg-gray-50 ${comment.status === 'pending' ? 'bg-amber-50/30' : ''}`}>
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                              <Users size={20} />
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-gray-800">{comment.userName || 'Anonymous'}</div>
+                              <div className="text-xs text-gray-500">{comment.userEmail}</div>
+                            </div>
+                            {comment.status === 'pending' && (
+                              <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Pending</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {comment.status === 'pending' && (
+                              <button 
+                                onClick={() => handleApproveComment(comment.path)}
+                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                title="Approve"
+                              >
+                                <Check size={18} />
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => handleDeleteComment(comment.path)}
+                              className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash size={18} />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-gray-700 text-sm leading-relaxed ml-13">
+                          {comment.text}
+                        </p>
+                        <div className="mt-3 ml-13 flex items-center gap-4 text-[10px] text-gray-400 uppercase tracking-widest">
+                          <span>{comment.createdAt?.toDate().toLocaleString()}</span>
+                          <span>•</span>
+                          <span className="font-bold text-sky-600">Post ID: {comment.path.split('/')[1]}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-12 text-center text-gray-500">No comments found.</div>
+                )}
               </div>
             </div>
           )}

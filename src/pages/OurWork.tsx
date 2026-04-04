@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ExternalLink, Smartphone, Monitor, Globe, MapPin, Mail, Menu, X } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { db } from '../firebase';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
 
 export default function OurWork() {
   const [generalSettings, setGeneralSettings] = useState({
@@ -14,63 +16,35 @@ export default function OurWork() {
     heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop'
   });
 
-  const defaultServices = [
-    { id: 1, title: 'Web Development' },
-    { id: 2, title: 'Mobile App Development' },
-    { id: 3, title: 'Desktop Application Development' },
-    { id: 4, title: 'UI/UX Design' },
-    { id: 5, title: 'Digital Marketing' }
-  ];
-
-  const [services, setServices] = useState(defaultServices);
-
-  const [projects, setProjects] = useState([
-    {
-      id: 1,
-      title: 'E-Commerce Platform',
-      category: 'Web Development',
-      description: 'A full-featured e-commerce platform with inventory management, payment processing, and user analytics.',
-      image: 'https://images.unsplash.com/photo-1661956602116-aa6865609028?q=80&w=2664&auto=format&fit=crop',
-      link: 'https://example.com',
-      type: 'web'
-    },
-    {
-      id: 2,
-      title: 'Fitness Tracking App',
-      category: 'Mobile App',
-      description: 'A cross-platform mobile application for tracking workouts, nutrition, and connecting with personal trainers.',
-      image: 'https://images.unsplash.com/photo-1526498460520-4c246339dccb?q=80&w=2670&auto=format&fit=crop',
-      link: 'https://example.com',
-      type: 'mobile'
-    },
-    {
-      id: 3,
-      title: 'Enterprise ERP System',
-      category: 'Desktop App',
-      description: 'A comprehensive desktop application for managing enterprise resources, HR, and financial reporting.',
-      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop',
-      link: 'https://example.com',
-      type: 'desktop'
-    }
-  ]);
-
+  const [services, setServices] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const savedProjects = localStorage.getItem('rftech_projects');
-    if (savedProjects) {
-      setProjects(JSON.parse(savedProjects));
-    }
+    // Fetch General Settings
+    const unsubscribeSettings = onSnapshot(doc(db, 'sites/siteA/settings/general'), (docSnap) => {
+      if (docSnap.exists()) {
+        setGeneralSettings(docSnap.data() as any);
+      }
+    });
 
-    const savedSettings = localStorage.getItem('rftech_general_settings');
-    if (savedSettings) {
-      setGeneralSettings(JSON.parse(savedSettings));
-    }
+    // Fetch Services
+    const unsubscribeServices = onSnapshot(collection(db, 'sites/siteA/services'), (snapshot) => {
+      const fetchedServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setServices(fetchedServices);
+    });
 
-    const savedServices = localStorage.getItem('rftech_services');
-    if (savedServices) {
-      setServices(JSON.parse(savedServices));
-    }
+    // Fetch Projects
+    const unsubscribeProjects = onSnapshot(collection(db, 'sites/siteA/projects'), (snapshot) => {
+      const fetchedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProjects(fetchedProjects);
+    });
+
+    return () => {
+      unsubscribeSettings();
+      unsubscribeServices();
+      unsubscribeProjects();
+    };
   }, []);
 
   const getIcon = (type: string) => {
@@ -224,6 +198,7 @@ export default function OurWork() {
               <li><Link to="/#blog" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Blog</Link></li>
               <li><Link to="/our-work" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Our Work</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Contact</Link></li>
+              <li><Link to="/sitemap" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Sitemap</Link></li>
             </ul>
           </div>
 

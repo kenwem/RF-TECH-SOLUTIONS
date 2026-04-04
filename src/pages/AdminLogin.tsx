@@ -3,10 +3,13 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/aut
 import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from '../components/Logo';
+import { cleanFirebaseError } from '../lib/errorUtils';
+import { AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,10 +22,18 @@ export default function AdminLogin() {
     setMessage('');
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const adminEmail = 'kenwem@yahoo.com';
+      
+      if (userCredential.user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
+        await auth.signOut();
+        setError('Unauthorized: This account does not have administrative access.');
+        return;
+      }
+      
       navigate('/admin');
     } catch (err: any) {
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      setError(cleanFirebaseError(err.message));
     } finally {
       setIsLoading(false);
     }
@@ -42,7 +53,7 @@ export default function AdminLogin() {
       await sendPasswordResetEmail(auth, email);
       setMessage('Password reset email sent. Please check your inbox.');
     } catch (err: any) {
-      setError(err.message || 'Failed to send password reset email.');
+      setError(cleanFirebaseError(err.message));
     } finally {
       setIsLoading(false);
     }
@@ -54,33 +65,53 @@ export default function AdminLogin() {
         <Logo className="text-[16px]" light />
       </div>
       
-      <div className="bg-white/5 border border-white/10 p-8 rounded-xl w-full max-w-md backdrop-blur-md">
+      <div className="bg-zinc-900 border border-white/20 p-8 rounded-xl w-full max-w-md backdrop-blur-md shadow-2xl">
         <h2 className="text-2xl font-bold text-white mb-6 text-center">Admin Login</h2>
         
-        {error && <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded mb-4 text-sm">{error}</div>}
-        {message && <div className="bg-green-500/10 border border-green-500/50 text-green-500 p-3 rounded mb-4 text-sm">{message}</div>}
+        {error && (
+          <div className="bg-red-600/90 border border-red-500 text-white p-4 rounded-lg mb-6 flex items-start gap-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300">
+            <AlertCircle className="shrink-0 text-white" size={18} />
+            <span className="text-sm font-bold leading-tight">{error}</span>
+          </div>
+        )}
+        
+        {message && (
+          <div className="bg-emerald-600/90 border border-emerald-500 text-white p-4 rounded-lg mb-6 flex items-start gap-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300">
+            <CheckCircle2 className="shrink-0 text-white" size={18} />
+            <span className="text-sm font-bold leading-tight">{message}</span>
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">Email Address</label>
+            <label className="block text-sm font-semibold text-white/90 mb-2">Email Address</label>
             <input 
               type="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-black/20 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-sky-500"
+              className="w-full bg-black/40 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
               required
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">Password</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-black/20 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-sky-500"
-              required
-            />
+            <label className="block text-sm font-semibold text-white/90 mb-2">Password</label>
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-black/40 border border-white/20 rounded-lg px-4 py-3 pr-10 text-white placeholder:text-white/40 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div className="flex justify-end">

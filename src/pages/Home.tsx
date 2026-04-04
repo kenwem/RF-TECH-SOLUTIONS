@@ -2,11 +2,47 @@ import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
-import { Globe, MapPin, Users, Code, Smartphone, PenTool, Search, Share2, FileText, ArrowDown, Monitor, Mail, Menu, X } from 'lucide-react';
+import { Globe, MapPin, Users, Code, Smartphone, PenTool, Search, Share2, FileText, ArrowDown, Monitor, Mail, Menu, X, Heart, MessageSquare, ArrowRight } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
+import { db } from '../firebase';
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 
 gsap.registerPlugin(ScrollTrigger);
+
+function PostStats({ postId }: { postId: string }) {
+  const [likes, setLikes] = useState(0);
+  const [comments, setComments] = useState(0);
+
+  useEffect(() => {
+    const likesRef = collection(db, `sites/siteA/posts/${postId}/likes`);
+    const unsubscribeLikes = onSnapshot(likesRef, (snapshot) => {
+      setLikes(snapshot.size);
+    });
+
+    const commentsRef = collection(db, `sites/siteA/posts/${postId}/comments`);
+    const q = query(commentsRef, where('status', '==', 'approved'));
+    const unsubscribeComments = onSnapshot(q, (snapshot) => {
+      setComments(snapshot.size);
+    });
+
+    return () => {
+      unsubscribeLikes();
+      unsubscribeComments();
+    };
+  }, [postId]);
+
+  return (
+    <div className="flex items-center gap-4 mt-4 text-[10px] uppercase tracking-widest text-white/40 font-bold">
+      <div className="flex items-center gap-1.5">
+        <Heart size={12} /> {likes}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <MessageSquare size={12} /> {comments}
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [generalSettings, setGeneralSettings] = useState({
@@ -43,20 +79,34 @@ export default function Home() {
   const loaderTextRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem('rftech_general_settings');
-    if (savedSettings) {
-      setGeneralSettings(JSON.parse(savedSettings));
-    }
+    // Fetch General Settings
+    const unsubscribeSettings = onSnapshot(doc(db, 'sites/siteA/settings/general'), (docSnap: any) => {
+      if (docSnap.exists()) {
+        setGeneralSettings(docSnap.data() as any);
+      }
+    });
 
-    const savedServices = localStorage.getItem('rftech_services');
-    if (savedServices) {
-      setServices(JSON.parse(savedServices));
-    }
+    // Fetch Services
+    const unsubscribeServices = onSnapshot(collection(db, 'sites/siteA/services'), (snapshot) => {
+      const fetchedServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (fetchedServices.length > 0) {
+        setServices(fetchedServices as any);
+      }
+    });
 
-    const savedPosts = localStorage.getItem('rftech_posts');
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts));
-    }
+    // Fetch Posts
+    const unsubscribePosts = onSnapshot(collection(db, 'sites/siteA/posts'), (snapshot) => {
+      const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (fetchedPosts.length > 0) {
+        setPosts(fetchedPosts as any);
+      }
+    });
+
+    return () => {
+      unsubscribeSettings();
+      unsubscribeServices();
+      unsubscribePosts();
+    };
   }, []);
 
   useEffect(() => {
@@ -381,14 +431,20 @@ export default function Home() {
           
           <div className="grid md:grid-cols-3 gap-8">
             {posts.map((post) => (
-              <div className="group cursor-pointer" key={post.id}>
+              <Link to={`/blog/${post.id}`} className="group cursor-pointer" key={post.id}>
                 <div className="overflow-hidden rounded-sm mb-6 h-64">
                   <img src={post.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={post.title} referrerPolicy="no-referrer" />
                 </div>
                 <div className="text-xs uppercase tracking-widest text-white/70 mb-3 font-medium">{post.category}</div>
                 <h3 className="text-xl font-medium display tracking-tight-custom mb-3 text-white group-hover:text-white/80 transition-colors">{post.title}</h3>
-                <p className="text-white/80 font-light text-sm line-clamp-3">{post.description}</p>
-              </div>
+                <p className="text-white/80 font-light text-sm line-clamp-3 mb-4">{post.description}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sky-400 text-xs font-bold uppercase tracking-widest group-hover:gap-3 transition-all">
+                    Read Full Article <ArrowRight size={14} />
+                  </div>
+                  <PostStats postId={post.id.toString()} />
+                </div>
+              </Link>
             ))}
           </div>
         </section>
@@ -433,6 +489,7 @@ export default function Home() {
               <li><a href="#blog" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Blog</a></li>
               <li><Link to="/our-work" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Our Work</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Contact</Link></li>
+              <li><Link to="/sitemap" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Sitemap</Link></li>
             </ul>
           </div>
 

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from '../components/Logo';
 import { MapPin, Clock, Mail, Phone, Send, MessageCircle, Menu, X } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
 
 export default function Contact() {
   const [generalSettings, setGeneralSettings] = useState({
@@ -14,26 +16,26 @@ export default function Contact() {
     heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop'
   });
 
-  const defaultServices = [
-    { id: 1, title: 'Web Development' },
-    { id: 2, title: 'Mobile App Development' },
-    { id: 3, title: 'Desktop Application Development' },
-    { id: 4, title: 'UI/UX Design' },
-    { id: 5, title: 'Digital Marketing' }
-  ];
-
-  const [services, setServices] = useState(defaultServices);
+  const [services, setServices] = useState<any[]>([]);
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem('rftech_general_settings');
-    if (savedSettings) {
-      setGeneralSettings(JSON.parse(savedSettings));
-    }
+    // Fetch General Settings
+    const unsubscribeSettings = onSnapshot(doc(db, 'sites/siteA/settings/general'), (docSnap) => {
+      if (docSnap.exists()) {
+        setGeneralSettings(docSnap.data() as any);
+      }
+    });
 
-    const savedServices = localStorage.getItem('rftech_services');
-    if (savedServices) {
-      setServices(JSON.parse(savedServices));
-    }
+    // Fetch Services
+    const unsubscribeServices = onSnapshot(collection(db, 'sites/siteA/services'), (snapshot) => {
+      const fetchedServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setServices(fetchedServices);
+    });
+
+    return () => {
+      unsubscribeSettings();
+      unsubscribeServices();
+    };
   }, []);
 
   const [formData, setFormData] = useState({
@@ -300,6 +302,7 @@ export default function Contact() {
               <li><Link to="/#blog" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Blog</Link></li>
               <li><Link to="/our-work" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Our Work</Link></li>
               <li><Link to="/contact" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Contact</Link></li>
+              <li><Link to="/sitemap" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Sitemap</Link></li>
             </ul>
           </div>
 
