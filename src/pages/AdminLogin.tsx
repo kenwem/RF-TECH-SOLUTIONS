@@ -24,8 +24,9 @@ export default function AdminLogin() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const adminEmail = 'kenwem@yahoo.com';
+      const userEmail = userCredential.user.email?.toLowerCase().trim();
       
-      if (userCredential.user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
+      if (!userEmail || userEmail !== adminEmail) {
         await auth.signOut();
         setError('Unauthorized: This account does not have administrative access.');
         return;

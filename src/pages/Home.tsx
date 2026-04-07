@@ -2,75 +2,36 @@ import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
-import { Globe, MapPin, Users, Code, Smartphone, PenTool, Search, Share2, FileText, ArrowDown, Monitor, Mail, Menu, X, Heart, MessageSquare, ArrowRight } from 'lucide-react';
+import { Globe, MapPin, Users, Code, Smartphone, PenTool, Search, Share2, FileText, ArrowDown, Monitor, Mail, Menu, X, ArrowRight } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
 
 gsap.registerPlugin(ScrollTrigger);
-
-function PostStats({ postId }: { postId: string }) {
-  const [likes, setLikes] = useState(0);
-  const [comments, setComments] = useState(0);
-
-  useEffect(() => {
-    const likesRef = collection(db, `sites/siteA/posts/${postId}/likes`);
-    const unsubscribeLikes = onSnapshot(likesRef, (snapshot) => {
-      setLikes(snapshot.size);
-    });
-
-    const commentsRef = collection(db, `sites/siteA/posts/${postId}/comments`);
-    const q = query(commentsRef, where('status', '==', 'approved'));
-    const unsubscribeComments = onSnapshot(q, (snapshot) => {
-      setComments(snapshot.size);
-    });
-
-    return () => {
-      unsubscribeLikes();
-      unsubscribeComments();
-    };
-  }, [postId]);
-
-  return (
-    <div className="flex items-center gap-4 mt-4 text-[10px] uppercase tracking-widest text-white/40 font-bold">
-      <div className="flex items-center gap-1.5">
-        <Heart size={12} /> {likes}
-      </div>
-      <div className="flex items-center gap-1.5">
-        <MessageSquare size={12} /> {comments}
-      </div>
-    </div>
-  );
-}
 
 export default function Home() {
   const [generalSettings, setGeneralSettings] = useState({
     heroTitle: 'Powering\nBusiness Growth',
     heroSubtitle: 'We build powerful websites, mobile apps, and digital solutions that help businesses grow, reach more customers, and succeed in the digital world.',
-    email: 'contact@rftechsolutions.com',
-    phone: '+234 813 433 2534',
-    address: '98 Adatan Abeokuta, Ogun State Nigeria',
-    copyright: '© 2026 RF Tech Solutions. All Rights Reserved.',
-    heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop'
+    contactEmail: 'contact@rftech.ng',
+    contactPhone: '+234 813 433 2534',
+    contactAddress: '98 Adatan Abeokuta, Ogun State Nigeria',
+    footerText: '© 2026 RF Tech Solutions. All Rights Reserved.',
+    heroBackgroundImage: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop',
+    websiteLogo: '',
+    aboutUs: ''
   });
 
   const defaultServices = [
-    { id: 1, title: 'Web Development', subtitle: 'Scalable & Responsive', description: 'Custom web applications, e-commerce platforms, and corporate websites built with modern technologies. We deliver fast, secure, and scalable solutions tailored to your business needs.', icon: <Code size={16} />, iconText: 'Full-Stack Solutions', image: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=2672&auto=format&fit=crop' },
-    { id: 2, title: 'Mobile App Development', subtitle: 'iOS & Android', description: 'Native and cross-platform mobile applications that provide seamless user experiences. From concept to app store launch, we build apps that engage and retain users.', icon: <Smartphone size={16} />, iconText: 'Cross-Platform Apps', image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=2670&auto=format&fit=crop' },
-    { id: 3, title: 'Desktop Application Development', subtitle: 'Windows, macOS & Linux', description: 'Robust and high-performance desktop applications tailored for your enterprise needs. We build secure, cross-platform software that integrates seamlessly with your existing infrastructure.', icon: <FileText size={16} />, iconText: 'Enterprise Software', image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=2670&auto=format&fit=crop' },
-    { id: 4, title: 'UI/UX Design', subtitle: 'User-Centric Interfaces', description: 'Intuitive and visually stunning designs that enhance user satisfaction. We focus on user research, wireframing, prototyping, and creating engaging digital experiences.', icon: <PenTool size={16} />, iconText: 'Design Systems', image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?q=80&w=2000&auto=format&fit=crop' },
-    { id: 5, title: 'Digital Marketing', subtitle: 'SEO, Social & Content', description: 'Comprehensive digital marketing strategies including Search Engine Optimization (SEO), Social Media Management, and compelling Content Writing to boost your online visibility.', icon: <Share2 size={16} />, iconText: 'Growth Strategies', image: 'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?q=80&w=2674&auto=format&fit=crop' }
-  ];
-
-  const defaultPosts = [
-    { id: 1, title: '10 SEO Strategies to Dominate Search Rankings in 2026', category: 'Digital Marketing', date: 'Oct 24, 2024', description: 'Discover the most effective SEO techniques to improve your website\'s visibility, drive organic traffic, and outrank your competitors in the ever-evolving digital landscape.', image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop' },
-    { id: 2, title: 'Why Your Business Needs a Custom Web Application', category: 'Web Development', date: 'Oct 18, 2024', description: 'Off-the-shelf solutions might be quick, but custom web applications provide the scalability, security, and specific features your growing business truly needs.', image: 'https://images.unsplash.com/photo-1555421689-491a97ff2040?q=80&w=2670&auto=format&fit=crop' },
-    { id: 3, title: 'The Future of Cross-Platform Mobile Development', category: 'Mobile Apps', date: 'Oct 12, 2024', description: 'Explore how frameworks like React Native and Flutter are revolutionizing the way we build mobile applications, reducing time-to-market and development costs.', image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=2670&auto=format&fit=crop' }
+    { id: 'web-dev', title: 'Web Development', subtitle: 'Scalable & Responsive', description: 'Custom web applications, e-commerce platforms, and corporate websites built with modern technologies. We deliver fast, secure, and scalable solutions tailored to your business needs.', icon: <Code size={16} />, iconText: 'Full-Stack Solutions', imageUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=2672&auto=format&fit=crop' },
+    { id: 'mobile-dev', title: 'Mobile App Development', subtitle: 'iOS & Android', description: 'Native and cross-platform mobile applications that provide seamless user experiences. From concept to app store launch, we build apps that engage and retain users.', icon: <Smartphone size={16} />, iconText: 'Cross-Platform Apps', imageUrl: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=2670&auto=format&fit=crop' },
+    { id: 'desktop-dev', title: 'Desktop Application Development', subtitle: 'Windows, macOS & Linux', description: 'Robust and high-performance desktop applications tailored for your enterprise needs. We build secure, cross-platform software that integrates seamlessly with your existing infrastructure.', icon: <FileText size={16} />, iconText: 'Enterprise Software', imageUrl: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=2670&auto=format&fit=crop' },
+    { id: 'ui-ux', title: 'UI/UX Design', subtitle: 'User-Centric Interfaces', description: 'Intuitive and visually stunning designs that enhance user satisfaction. We focus on user research, wireframing, prototyping, and creating engaging digital experiences.', icon: <PenTool size={16} />, iconText: 'Design Systems', imageUrl: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?q=80&w=2000&auto=format&fit=crop' },
+    { id: 'marketing', title: 'Digital Marketing', subtitle: 'SEO, Social & Content', description: 'Comprehensive digital marketing strategies including Search Engine Optimization (SEO), Social Media Management, and compelling Content Writing to boost your online visibility.', icon: <Share2 size={16} />, iconText: 'Growth Strategies', imageUrl: 'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?q=80&w=2674&auto=format&fit=crop' }
   ];
 
   const [services, setServices] = useState(defaultServices);
-  const [posts, setPosts] = useState(defaultPosts);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -90,24 +51,52 @@ export default function Home() {
     const unsubscribeServices = onSnapshot(collection(db, 'sites/siteA/services'), (snapshot) => {
       const fetchedServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if (fetchedServices.length > 0) {
-        setServices(fetchedServices as any);
-      }
-    });
-
-    // Fetch Posts
-    const unsubscribePosts = onSnapshot(collection(db, 'sites/siteA/posts'), (snapshot) => {
-      const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (fetchedPosts.length > 0) {
-        setPosts(fetchedPosts as any);
+        const sortedServices = fetchedServices.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+        setServices(sortedServices as any);
       }
     });
 
     return () => {
       unsubscribeSettings();
       unsubscribeServices();
-      unsubscribePosts();
     };
   }, []);
+
+  const handleHashScroll = (e?: React.MouseEvent, targetHash?: string) => {
+    const hash = targetHash || window.location.hash;
+    if (hash) {
+      const target = document.querySelector(hash);
+      if (target) {
+        if (e) e.preventDefault();
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  };
+
+  useEffect(() => {
+    // Initial scroll
+    handleHashScroll();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', () => handleHashScroll());
+    return () => window.removeEventListener('hashchange', () => handleHashScroll());
+  }, []);
+
+  // Text Splitter Utility
+  const splitTextToWords = (element: Element) => {
+    const text = (element as HTMLElement).innerText;
+    const words = text.split(' ');
+    element.innerHTML = '';
+    words.forEach(word => {
+      const wordWrap = document.createElement('span');
+      wordWrap.classList.add('word-wrap');
+      wordWrap.innerHTML = `<span class="word-inner">${word}</span>`;
+      element.appendChild(wordWrap);
+      element.appendChild(document.createTextNode(' '));
+    });
+  };
 
   useEffect(() => {
     // Lenis smooth scrolling
@@ -123,20 +112,7 @@ export default function Home() {
     }
     requestAnimationFrame(raf);
 
-    // Text Splitter Utility
-    const splitTextToWords = (element: Element) => {
-      const text = (element as HTMLElement).innerText;
-      const words = text.split(' ');
-      element.innerHTML = '';
-      words.forEach(word => {
-        const wordWrap = document.createElement('span');
-        wordWrap.classList.add('word-wrap');
-        wordWrap.innerHTML = `<span class="word-inner">${word}</span>`;
-        element.appendChild(wordWrap);
-        element.appendChild(document.createTextNode(' '));
-      });
-    };
-
+    // Initial text split
     document.querySelectorAll('.split-animate').forEach(el => {
       splitTextToWords(el);
     });
@@ -153,95 +129,126 @@ export default function Home() {
           .to(loaderTextRef.current, { y: -50, opacity: 0, duration: 0.5 })
           .to(loaderRef.current, { yPercent: -100, duration: 0.8, ease: 'power4.inOut' });
 
-    function initSite() {
-      // Hero Animations
-      gsap.to('.hero-text span', { 
-          y: 0, 
-          stagger: 0.1, 
-          duration: 1.5, 
-          ease: 'power4.out' 
-      });
-      gsap.to('.hero-fade', { opacity: 1, y: 0, stagger: 0.1, duration: 1, delay: 0.5 });
-      
-      // Hero Parallax
-      gsap.to('.hero-img', {
-          yPercent: 30,
-          ease: 'none',
-          scrollTrigger: {
-              trigger: '.hero-img',
-              start: 'top top',
-              end: 'bottom top',
-              scrub: true
-          }
-      });
-
-      // Text Reveal on Scroll
-      const splitElements = document.querySelectorAll('.split-animate');
-      splitElements.forEach(el => {
-          const words = el.querySelectorAll('.word-inner');
-          gsap.to(words, {
-              y: "0%",
-              duration: 0.8,
-              ease: "power3.out",
-              stagger: 0.015,
-              scrollTrigger: {
-                  trigger: el,
-                  start: "top 90%", 
-                  toggleActions: "play none none reverse"
-              }
-          });
-      });
-
-      // Card Stack Animation
-      const cards = gsap.utils.toArray('.card-item') as HTMLElement[];
-      
-      cards.forEach((card, i) => {
-          const nextCard = cards[i+1];
-          if (nextCard) {
-              gsap.to(card.querySelector('.card-inner'), {
-                  scale: 0.95,
-                  opacity: 0.5, 
-                  filter: 'blur(5px)',
-                  ease: "none",
-                  scrollTrigger: {
-                      trigger: nextCard,
-                      start: "top bottom", 
-                      end: "top 10vh",    
-                      scrub: true
-                  }
-              });
-          }
-      });
-
-      // Footer Reveal Effect
-      gsap.from('.footer-sticky > div', {
-          y: 50,
-          opacity: 0,
-          scale: 0.95,
-          scrollTrigger: {
-              trigger: '.footer-sticky',
-              start: 'top 90%', 
-              end: 'bottom bottom',
-              scrub: true
-          }
-      });
-
-      // Handle hash navigation after load
-      if (window.location.hash) {
-        const target = document.querySelector(window.location.hash);
-        if (target) {
-          setTimeout(() => {
-            target.scrollIntoView({ behavior: 'smooth' });
-          }, 100);
-        }
-      }
-    }
-
     return () => {
       lenis.destroy();
       ScrollTrigger.getAll().forEach(t => t.kill());
     };
   }, []);
+
+  useEffect(() => {
+    if (!isLoaded || services.length === 0) return;
+
+    // Refresh ScrollTrigger when services change
+    ScrollTrigger.refresh();
+
+    // Card Stack Animation
+    const cards = gsap.utils.toArray('.card-item') as HTMLElement[];
+    
+    cards.forEach((card, i) => {
+        const nextCard = cards[i+1];
+        if (nextCard) {
+            gsap.to(card.querySelector('.card-inner'), {
+                scale: 0.95,
+                opacity: 0.5, 
+                filter: 'blur(5px)',
+                ease: "none",
+                scrollTrigger: {
+                    trigger: nextCard,
+                    start: "top bottom", 
+                    end: "top 10vh",    
+                    scrub: true,
+                    invalidateOnRefresh: true
+                }
+            });
+        }
+    });
+
+    // Text Reveal on Scroll for dynamic content
+    const splitElements = document.querySelectorAll('.split-animate');
+    splitElements.forEach(el => {
+        // Only split if not already split
+        if (el.querySelectorAll('.word-inner').length === 0) {
+          splitTextToWords(el);
+        }
+        
+        const words = el.querySelectorAll('.word-inner');
+        gsap.to(words, {
+            y: "0%",
+            duration: 0.8,
+            ease: "power3.out",
+            stagger: 0.015,
+            scrollTrigger: {
+                trigger: el,
+                start: "top 90%", 
+                toggleActions: "play none none reverse"
+            }
+        });
+    });
+
+    return () => {
+      ScrollTrigger.getAll().forEach(st => {
+        if (st.trigger && (st.trigger as HTMLElement).classList.contains('card-item')) {
+          st.kill();
+        }
+      });
+    };
+  }, [services, isLoaded]);
+
+  function initSite() {
+    // Hero Animations
+    gsap.to('.hero-text span', { 
+        y: 0, 
+        stagger: 0.1, 
+        duration: 1.5, 
+        ease: 'power4.out' 
+    });
+    gsap.to('.hero-fade', { opacity: 1, y: 0, stagger: 0.1, duration: 1, delay: 0.5 });
+    
+    // Hero Parallax
+    gsap.to('.hero-img', {
+        yPercent: 30,
+        ease: 'none',
+        scrollTrigger: {
+            trigger: '.hero-img',
+            start: 'top top',
+            end: 'bottom top',
+            scrub: true
+        }
+    });
+
+    // Footer Reveal Effect
+    gsap.from('.footer-sticky > div', {
+        y: 50,
+        opacity: 0,
+        scale: 0.95,
+        scrollTrigger: {
+            trigger: '.footer-sticky',
+            start: 'top 90%', 
+            end: 'bottom bottom',
+            scrub: true
+        }
+    });
+
+    // Handle hash navigation after load
+    if (window.location.hash) {
+      const target = document.querySelector(window.location.hash);
+      if (target) {
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }
+
+  const getDirectImgurUrl = (url: string) => {
+    if (!url) return '';
+    if (url.includes('imgur.com') && !url.includes('i.imgur.com')) {
+      const parts = url.split('/');
+      const id = parts[parts.length - 1];
+      if (id) return `https://i.imgur.com/${id}.png`;
+    }
+    return url;
+  };
 
   return (
     <div className="antialiased selection:bg-sky-800 selection:text-white" style={{ opacity: isLoaded ? 1 : 0, transition: 'opacity 0.5s' }}>
@@ -261,7 +268,11 @@ export default function Home() {
       <nav className="fixed top-0 w-full px-6 py-6 md:px-12 flex justify-between items-center z-50 text-white bg-[var(--c-bg)]/80 backdrop-blur-md md:bg-transparent md:backdrop-blur-none">
         <div className="flex items-center gap-2">
           <Link to="/" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-            <Logo className="text-[12px] md:text-[16px]" light />
+            {generalSettings.websiteLogo ? (
+              <img src={generalSettings.websiteLogo} alt="RF Tech Solutions" className="h-8 md:h-10 w-auto" />
+            ) : (
+              <Logo className="text-[12px] md:text-[16px]" light />
+            )}
           </Link>
         </div>
         
@@ -276,9 +287,9 @@ export default function Home() {
         {/* Desktop Menu */}
         <div className="hidden md:flex gap-8 text-xs font-medium uppercase tracking-widest text-white/80">
           <Link to="/" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-white transition-colors">Home</Link>
-          <a href="#about" className="hover:text-white transition-colors">About</a>
-          <a href="#services" className="hover:text-white transition-colors">Services</a>
-          <a href="#blog" className="hover:text-white transition-colors">Blog</a>
+          <Link to="/#about" onClick={(e) => handleHashScroll(e, '#about')} className="hover:text-white transition-colors">About</Link>
+          <Link to="/#services" onClick={(e) => handleHashScroll(e, '#services')} className="hover:text-white transition-colors">Services</Link>
+          <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
           <Link to="/our-work" className="hover:text-white transition-colors">Our Work</Link>
           <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
         </div>
@@ -292,9 +303,9 @@ export default function Home() {
         {isMobileMenuOpen && (
           <div className="absolute top-full left-0 w-full bg-[var(--c-bg)] border-t border-white/10 flex flex-col py-4 px-6 gap-4 md:hidden shadow-xl">
             <Link to="/" onClick={() => { window.scrollTo({top: 0, behavior: 'smooth'}); setIsMobileMenuOpen(false); }} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Home</Link>
-            <a href="#about" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">About</a>
-            <a href="#services" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Services</a>
-            <a href="#blog" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Blog</a>
+            <Link to="/#about" onClick={(e) => { handleHashScroll(e, '#about'); setIsMobileMenuOpen(false); }} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">About</Link>
+            <Link to="/#services" onClick={(e) => { handleHashScroll(e, '#services'); setIsMobileMenuOpen(false); }} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Services</Link>
+            <Link to="/blog" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Blog</Link>
             <Link to="/our-work" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Our Work</Link>
             <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Contact</Link>
           </div>
@@ -307,7 +318,7 @@ export default function Home() {
         {/* HERO SECTION */}
         <section className="h-screen relative flex items-center justify-center overflow-hidden bg-[#050505]">
           <img 
-            src={generalSettings.heroBgUrl || "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop"} 
+            src={generalSettings.heroBackgroundImage || "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop"} 
             className="absolute inset-0 w-full h-full object-cover hero-img opacity-70" 
             alt="Digital Agency Workspace"
             referrerPolicy="no-referrer"
@@ -320,7 +331,7 @@ export default function Home() {
               <span className="block translate-y-full whitespace-nowrap" dangerouslySetInnerHTML={{ __html: generalSettings.heroTitle.replace(/\n/g, '<br/>') }}></span>
             </h1>
             
-            <p className="mt-8 text-sm md:text-base font-light text-white/90 max-w-2xl mx-auto hero-fade opacity-0 leading-relaxed drop-shadow-md">
+            <p className="mt-8 text-base md:text-lg lg:text-xl font-semibold text-white max-w-3xl mx-auto hero-fade opacity-0 leading-relaxed drop-shadow-lg">
               {generalSettings.heroSubtitle}
             </p>
 
@@ -365,12 +376,20 @@ export default function Home() {
             </div>
           </div>
           <div className="text-lg md:text-xl font-light leading-relaxed text-white/90">
-            <p className="mb-8 split-animate">
-              RF Tech Solutions is a trusted partner for digital transformation projects. Our experienced developers, designers, and marketers ensure high-quality, scalable solutions that power your business growth.
-            </p>
-            <p className="mb-8 split-animate">
-              We specialize in comprehensive web and mobile app development, UI/UX design, and digital marketing services. From initial concept to final deployment, we manage the complex delivery of modern digital experiences.
-            </p>
+            {generalSettings.aboutUs ? (
+              <p className="mb-8 split-animate whitespace-pre-line">
+                {generalSettings.aboutUs}
+              </p>
+            ) : (
+              <>
+                <p className="mb-8 split-animate">
+                  RF Tech Solutions is a trusted partner for digital transformation projects. Our experienced developers, designers, and marketers ensure high-quality, scalable solutions that power your business growth.
+                </p>
+                <p className="mb-8 split-animate">
+                  We specialize in comprehensive web and mobile app development, UI/UX design, and digital marketing services. From initial concept to final deployment, we manage the complex delivery of modern digital experiences.
+                </p>
+              </>
+            )}
             
             <div className="h-px w-full bg-white/20 my-10"></div>
             
@@ -398,54 +417,27 @@ export default function Home() {
             
             {services.map((service, index) => (
               <div className="card-item" key={service.id}>
-                <div className="card-inner border-white/10">
+                <Link to={`/service/${service.id}`} className="card-inner border-white/10 block hover:border-sky-500/50 transition-colors">
                   <div className="card-content">
                     <div>
                       <div className="text-sm font-mono mb-6 text-white border border-white/30 inline-block px-2 py-1 rounded">0{index + 1}</div>
                       <h3 className="text-2xl md:text-3xl font-medium display tracking-tight-custom text-white">{service.title}</h3>
                       <p className="text-sm mt-2 text-white/70 uppercase tracking-widest">{service.subtitle}</p>
                     </div>
-                    <div className="text-white/80 font-light text-sm md:text-base leading-relaxed">
+                    <div className="text-white/80 font-light text-sm md:text-base leading-relaxed line-clamp-3">
                       {service.description}
                     </div>
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-widest pt-4 border-t border-white/10 text-white/90">
-                      {service.icon} {service.iconText}
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-widest pt-2 border-t border-white/10 text-sky-400 group">
+                      Learn More <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
                   <div className="card-img-wrap">
-                    <img src={service.image} className="card-img" alt={service.title} referrerPolicy="no-referrer" />
+                    <img src={getDirectImgurUrl(service.imageUrl || (service as any).image)} className="card-img" alt={service.title} referrerPolicy="no-referrer" />
                   </div>
-                </div>
+                </Link>
               </div>
             ))}
 
-          </div>
-        </section>
-
-        {/* BLOG SECTION */}
-        <section id="blog" className="pt-8 pb-32 px-6 md:px-20 max-w-[1400px] mx-auto bg-[var(--c-bg)] relative z-10">
-          <div className="text-center mb-20">
-            <div className="text-xs uppercase tracking-[0.2em] mb-4 text-white/70 font-bold">Insights</div>
-            <h2 className="display text-4xl md:text-5xl font-medium tracking-tight-custom text-white">LATEST ARTICLES</h2>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {posts.map((post) => (
-              <Link to={`/blog/${post.id}`} className="group cursor-pointer" key={post.id}>
-                <div className="overflow-hidden rounded-sm mb-6 h-64">
-                  <img src={post.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={post.title} referrerPolicy="no-referrer" />
-                </div>
-                <div className="text-xs uppercase tracking-widest text-white/70 mb-3 font-medium">{post.category}</div>
-                <h3 className="text-xl font-medium display tracking-tight-custom mb-3 text-white group-hover:text-white/80 transition-colors">{post.title}</h3>
-                <p className="text-white/80 font-light text-sm line-clamp-3 mb-4">{post.description}</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sky-400 text-xs font-bold uppercase tracking-widest group-hover:gap-3 transition-all">
-                    Read Full Article <ArrowRight size={14} />
-                  </div>
-                  <PostStats postId={post.id.toString()} />
-                </div>
-              </Link>
-            ))}
           </div>
         </section>
 
@@ -486,7 +478,7 @@ export default function Home() {
               <li><Link to="/" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Home</Link></li>
               <li><a href="#about" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> About Us</a></li>
               <li><a href="#services" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Services</a></li>
-              <li><a href="#blog" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Blog</a></li>
+              <li><Link to="/blog" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Blog</Link></li>
               <li><Link to="/our-work" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Our Work</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Contact</Link></li>
               <li><Link to="/sitemap" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Sitemap</Link></li>
@@ -509,27 +501,27 @@ export default function Home() {
             <ul className="space-y-6 text-sm font-light">
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="text-[#00d084] shrink-0 mt-1" />
-                <span>{generalSettings.address}</span>
+                <span>{generalSettings.contactAddress}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-3">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#00d084] shrink-0"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                    <a href={`tel:${generalSettings.phone.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{generalSettings.phone}</a>
+                    <a href={`tel:${generalSettings.contactPhone.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{generalSettings.contactPhone}</a>
                   </div>
                   <a href="https://wa.me/2348134332534" target="_blank" rel="noopener noreferrer" className="text-[#00d084] text-xs mt-1 ml-7 hover:underline">WhatsApp Us</a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
                 <Mail size={18} className="text-[#00d084] shrink-0 mt-1" />
-                <a href={`mailto:${generalSettings.email}`} className="hover:text-white transition-colors">{generalSettings.email}</a>
+                <a href={`mailto:${generalSettings.contactEmail}`} className="hover:text-white transition-colors">{generalSettings.contactEmail}</a>
               </li>
             </ul>
           </div>
           
           {/* Copyright */}
           <div className="col-span-1 md:col-span-2 lg:col-span-4 border-t border-white/10 pt-8 mt-4 text-center text-sm font-light text-white/60">
-            {generalSettings.copyright.split('RF').map((part, i, arr) => (
+            {generalSettings.footerText.split('RF').map((part, i, arr) => (
               <React.Fragment key={i}>
                 {part}
                 {i < arr.length - 1 && <Link to="/admin" className="hover:text-white transition-colors">RF</Link>}

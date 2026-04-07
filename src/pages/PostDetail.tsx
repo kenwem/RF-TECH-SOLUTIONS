@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Tag, MapPin, Mail, Phone, Heart, MessageSquare, Send, LogIn, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Calendar, Tag, MapPin, Mail, Phone, Heart, MessageSquare, Send, LogIn, User, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import AuthModal from '../components/AuthModal';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { cleanFirebaseError } from '../lib/errorUtils';
 export default function PostDetail() {
   const { id } = useParams();
   const [post, setPost] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
@@ -21,15 +22,19 @@ export default function PostDetail() {
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
 
   const [generalSettings, setGeneralSettings] = useState({
     heroTitle: 'Powering\nBusiness Growth',
     heroSubtitle: 'We build powerful websites, mobile apps, and digital solutions that help businesses grow, reach more customers, and succeed in the digital world.',
-    email: 'contact@rftechsolutions.com',
-    phone: '+234 813 433 2534',
-    address: '98 Adatan Abeokuta, Ogun State Nigeria',
-    copyright: '© 2026 RF Tech Solutions. All Rights Reserved.',
-    heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop'
+    contactEmail: 'contact@rftech.ng',
+    contactPhone: '+234 813 433 2534',
+    contactAddress: '98 Adatan Abeokuta, Ogun State Nigeria',
+    footerText: '© 2026 RF Tech Solutions. All Rights Reserved.',
+    heroBackgroundImage: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop',
+    websiteLogo: ''
   });
 
   useEffect(() => {
@@ -39,6 +44,7 @@ export default function PostDetail() {
 
     // Fetch Post from Firestore
     if (id) {
+      setLoading(true);
       const postRef = doc(db, 'sites/siteA/posts', id);
       const unsubscribePost = onSnapshot(postRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -46,6 +52,10 @@ export default function PostDetail() {
         } else {
           setPost(null);
         }
+        setLoading(false);
+      }, (error) => {
+        console.error("Error fetching post:", error);
+        setLoading(false);
       });
 
       // Fetch General Settings from Firestore
@@ -91,16 +101,38 @@ export default function PostDetail() {
     // Admin moderates from the dashboard.
     const q = query(commentsRef, where('status', '==', 'approved'));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedComments = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a: any, b: any) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const fetchedComments = await Promise.all(snapshot.docs.map(async (commentDoc) => {
+        const commentData = commentDoc.data();
+        const repliesRef = collection(db, `sites/siteA/posts/${id}/comments/${commentDoc.id}/replies`);
+        const repliesQuery = query(repliesRef, where('status', '==', 'approved'));
+        
+        // We can't use onSnapshot easily inside Promise.all for nested data if we want it real-time
+        // But for replies on a blog post, fetching them once or setting up a listener is fine.
+        // To keep it simple and real-time, we'll just fetch them here for now.
+        const repliesSnap = await getDocs(repliesQuery);
+        const replies = repliesSnap.docs.map(rDoc => ({
+          id: rDoc.id,
+          ...rDoc.data()
+        })).sort((a: any, b: any) => {
+          const dateA = a.createdAt?.toDate() || new Date(0);
+          const dateB = b.createdAt?.toDate() || new Date(0);
+          return dateA.getTime() - dateB.getTime();
+        });
+
+        return {
+          id: commentDoc.id,
+          ...commentData,
+          replies
+        };
+      }));
+
+      const sortedComments = fetchedComments.sort((a: any, b: any) => {
         const dateA = a.createdAt?.toDate() || new Date(0);
         const dateB = b.createdAt?.toDate() || new Date(0);
         return dateB.getTime() - dateA.getTime();
       });
-      setComments(fetchedComments);
+      setComments(sortedComments);
     }, (error: any) => {
       console.error("Error fetching comments:", error);
       if (error.code === 'failed-precondition') {
@@ -146,7 +178,7 @@ export default function PostDetail() {
     try {
       const adminEmail = 'kenwem@yahoo.com';
       const userEmail = user.email?.toLowerCase().trim();
-      const isAdmin = userEmail === adminEmail.toLowerCase().trim();
+      const isAdmin = userEmail === adminEmail;
       
       await addDoc(collection(db, `sites/siteA/posts/${id}/comments`), {
         userId: user.uid,
@@ -166,6 +198,55 @@ export default function PostDetail() {
     }
   };
 
+  const handleReplySubmit = async (commentId: string) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!replyText.trim()) return;
+
+    setSubmittingReply(true);
+    try {
+      const adminEmail = 'kenwem@yahoo.com';
+      const userEmail = user.email?.toLowerCase().trim();
+      const isAdmin = userEmail === adminEmail;
+      
+      await addDoc(collection(db, `sites/siteA/posts/${id}/comments/${commentId}/replies`), {
+        userId: user.uid,
+        userEmail: user.email,
+        userName: user.displayName || user.email?.split('@')[0],
+        text: replyText,
+        createdAt: serverTimestamp(),
+        status: isAdmin ? 'approved' : 'pending'
+      });
+      setReplyText('');
+      setReplyingTo(null);
+      toast.success(isAdmin ? 'Reply posted!' : 'Reply submitted for approval');
+    } catch (error) {
+      console.error("Error adding reply:", error);
+      toast.error(cleanFirebaseError(error instanceof Error ? error.message : "Failed to post reply"));
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const handleDeleteItem = async (commentId: string, replyId?: string) => {
+    try {
+      let itemRef;
+      if (replyId) {
+        itemRef = doc(db, `sites/siteA/posts/${id}/comments/${commentId}/replies`, replyId);
+      } else {
+        itemRef = doc(db, `sites/siteA/posts/${id}/comments`, commentId);
+      }
+      
+      await deleteDoc(itemRef);
+      toast.success('Deleted successfully');
+    } catch (error) {
+      console.error("Error deleting:", error);
+      toast.error(cleanFirebaseError(error instanceof Error ? error.message : "Failed to delete"));
+    }
+  };
+
   const [isExpanded, setIsExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [shouldShowExpand, setShouldShowExpand] = useState(false);
@@ -178,6 +259,27 @@ export default function PostDetail() {
       }
     }
   }, [post]);
+
+  const getDirectImgurUrl = (url: string) => {
+    if (!url) return '';
+    if (url.includes('imgur.com') && !url.includes('i.imgur.com')) {
+      const parts = url.split('/');
+      const id = parts[parts.length - 1];
+      if (id) return `https://i.imgur.com/${id}.png`;
+    }
+    return url;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--c-bg)] flex items-center justify-center text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-sky-500/20 border-t-sky-500 rounded-full animate-spin"></div>
+          <p className="text-gray-400 animate-pulse">Loading post...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!post) {
     return (
@@ -199,7 +301,11 @@ export default function PostDetail() {
       <nav className="fixed top-0 w-full px-6 py-6 md:px-12 flex justify-between items-center z-50 text-white bg-black/20 backdrop-blur-md border-b border-white/10">
         <div className="flex items-center gap-2">
           <Link to="/">
-            <Logo className="text-[12px] md:text-[16px]" light />
+            {generalSettings.websiteLogo ? (
+              <img src={generalSettings.websiteLogo} alt="RF Tech Solutions" className="h-8 md:h-10 w-auto" />
+            ) : (
+              <Logo className="text-[12px] md:text-[16px]" light />
+            )}
           </Link>
         </div>
         <div className="flex items-center gap-6">
@@ -273,7 +379,7 @@ export default function PostDetail() {
         {post.image && (
           <div className="mb-12 rounded-xl overflow-hidden border border-white/10 aspect-video">
             <img 
-              src={post.image} 
+              src={getDirectImgurUrl(post.image)} 
               alt={post.title} 
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
@@ -379,23 +485,124 @@ export default function PostDetail() {
           </div>
 
           {/* Comments List */}
-          <div className="space-y-8">
+          <div className="space-y-12">
             {comments.length > 0 ? (
               comments.map((comment) => (
-                <div key={comment.id} className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/50 font-bold shrink-0">
-                    <User size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-bold text-white">{comment.userName}</h4>
-                      <span className="text-[10px] text-white/30 uppercase tracking-widest">
-                        {comment.createdAt?.toDate().toLocaleDateString()}
-                      </span>
+                <div key={comment.id} className="group">
+                  <div className="flex gap-4">
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/50 font-bold shrink-0">
+                      <User size={20} />
                     </div>
-                    <p className="text-white/70 font-light leading-relaxed bg-white/5 p-4 rounded-xl border border-white/5">
-                      {comment.text}
-                    </p>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-sm font-bold text-white">{comment.userName}</h4>
+                          {comment.userEmail === 'kenwem@yahoo.com' && (
+                            <span className="text-[10px] bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Admin</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-[10px] text-white/30 uppercase tracking-widest">
+                            {comment.createdAt?.toDate().toLocaleDateString()}
+                          </span>
+                          {(user?.uid === comment.userId || user?.email === 'kenwem@yahoo.com') && (
+                            <button 
+                              onClick={() => handleDeleteItem(comment.id)}
+                              className="text-white/20 hover:text-red-500 transition-colors"
+                              title="Delete Comment"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-white/70 font-light leading-relaxed bg-white/5 p-4 rounded-xl border border-white/5 mb-3">
+                        {comment.text}
+                      </p>
+                      
+                      <div className="flex items-center gap-4">
+                        <button 
+                          onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                          className="text-xs font-bold text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1"
+                        >
+                          <MessageSquare size={12} /> Reply
+                        </button>
+                      </div>
+
+                      {/* Reply Form */}
+                      {replyingTo === comment.id && (
+                        <div className="mt-4 ml-4 pl-4 border-l-2 border-white/10">
+                          {user ? (
+                            <div className="space-y-3">
+                              <textarea
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                placeholder="Write a reply..."
+                                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all resize-none"
+                                rows={2}
+                              ></textarea>
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => setReplyingTo(null)}
+                                  className="text-xs font-bold text-white/50 hover:text-white px-4 py-2 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleReplySubmit(comment.id)}
+                                  disabled={submittingReply || !replyText.trim()}
+                                  className="bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-2 disabled:opacity-50"
+                                >
+                                  {submittingReply ? 'Replying...' : 'Post Reply'}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-white/30 italic">Please log in to reply.</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Replies List */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="mt-6 ml-4 pl-4 border-l-2 border-white/10 space-y-6">
+                          {comment.replies.map((reply: any) => (
+                            <div key={reply.id} className="flex gap-3">
+                              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/30 font-bold shrink-0">
+                                <User size={16} />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <h5 className="text-xs font-bold text-white/90">{reply.userName}</h5>
+                                    {reply.userEmail === 'kenwem@yahoo.com' && (
+                                      <span className="text-[8px] bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Admin</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-[9px] text-white/20 uppercase tracking-widest">
+                                      {reply.createdAt?.toDate().toLocaleDateString()}
+                                    </span>
+                                    {(user?.uid === reply.userId || user?.email === 'kenwem@yahoo.com') && (
+                                      <button 
+                                        onClick={() => handleDeleteItem(comment.id, reply.id)}
+                                        className="text-white/10 hover:text-red-500 transition-colors"
+                                        title="Delete Reply"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="text-sm text-white/60 font-light leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5">
+                                  {reply.text}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))
@@ -449,32 +656,32 @@ export default function PostDetail() {
             </ul>
           </div>
 
-          {/* Column 3: Contact Us */}
+          {/* Column 4: Contact Us */}
           <div>
             <h4 className="text-lg font-bold text-white mb-6">Contact Us</h4>
             <ul className="space-y-6 text-sm font-light">
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="text-[#00d084] shrink-0 mt-1" />
-                <span>{generalSettings.address}</span>
+                <span>{generalSettings.contactAddress}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-3">
                     <Phone size={18} className="text-[#00d084] shrink-0 mt-1" />
-                    <a href={`tel:${generalSettings.phone.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{generalSettings.phone}</a>
+                    <a href={`tel:${generalSettings.contactPhone.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{generalSettings.contactPhone}</a>
                   </div>
                 </div>
               </li>
               <li className="flex items-start gap-3">
                 <Mail size={18} className="text-[#00d084] shrink-0 mt-1" />
-                <a href={`mailto:${generalSettings.email}`} className="hover:text-white transition-colors">{generalSettings.email}</a>
+                <a href={`mailto:${generalSettings.contactEmail}`} className="hover:text-white transition-colors">{generalSettings.contactEmail}</a>
               </li>
             </ul>
           </div>
           
           {/* Copyright */}
           <div className="col-span-1 md:col-span-2 lg:col-span-4 border-t border-white/10 pt-8 mt-4 text-center text-sm font-light text-white/60">
-            {generalSettings.copyright}
+            {generalSettings.footerText}
           </div>
         </div>
       </footer>

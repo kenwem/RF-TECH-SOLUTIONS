@@ -9,11 +9,12 @@ export default function Sitemap() {
   const [generalSettings, setGeneralSettings] = useState({
     heroTitle: 'Powering\nBusiness Growth',
     heroSubtitle: 'We build powerful websites, mobile apps, and digital solutions that help businesses grow, reach more customers, and succeed in the digital world.',
-    email: 'contact@rftechsolutions.com',
-    phone: '+234 813 433 2534',
-    address: '98 Adatan Abeokuta, Ogun State Nigeria',
-    copyright: '© 2026 RF Tech Solutions. All Rights Reserved.',
-    heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop'
+    contactEmail: 'contact@rftech.ng',
+    contactPhone: '+234 813 433 2534',
+    contactAddress: '98 Adatan Abeokuta, Ogun State Nigeria',
+    footerText: '© 2026 RF Tech Solutions. All Rights Reserved.',
+    heroBackgroundImage: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop',
+    websiteLogo: ''
   });
 
   useEffect(() => {
@@ -54,7 +55,11 @@ export default function Sitemap() {
       <nav className="fixed top-0 w-full px-6 py-6 md:px-12 flex justify-between items-center z-50 text-white bg-black/20 backdrop-blur-md border-b border-white/10">
         <div className="flex items-center gap-2">
           <Link to="/">
-            <Logo className="text-[12px] md:text-[16px]" light />
+            {generalSettings.websiteLogo ? (
+              <img src={generalSettings.websiteLogo} alt="RF Tech Solutions" className="h-8 md:h-10 w-auto" />
+            ) : (
+              <Logo className="text-[12px] md:text-[16px]" light />
+            )}
           </Link>
         </div>
         <Link to="/" className="flex items-center gap-2 text-xs uppercase tracking-widest hover:text-sky-400 transition-colors">
@@ -102,21 +107,21 @@ export default function Sitemap() {
               <div className="space-y-4 text-sm text-white/70 font-light">
                 <div className="flex items-center gap-3">
                   <Phone size={16} className="text-sky-400" />
-                  {generalSettings.phone}
+                  {generalSettings.contactPhone}
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail size={16} className="text-sky-400" />
-                  {generalSettings.email}
+                  {generalSettings.contactEmail}
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin size={16} className="text-sky-400" />
-                  {generalSettings.address}
+                  {generalSettings.contactAddress}
                 </div>
               </div>
             </div>
             <div className="flex flex-col justify-end items-end">
               <p className="text-xs text-white/40 font-light">
-                {generalSettings.copyright}
+                {generalSettings.footerText}
               </p>
             </div>
           </div>

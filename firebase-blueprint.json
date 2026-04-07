@@ -37,6 +37,42 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "When the like was created" }
       },
       "required": ["userId"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A service offered by the company.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the service" },
+        "subtitle": { "type": "string", "description": "The subtitle of the service" },
+        "description": { "type": "string", "description": "The short description of the service" },
+        "image": { "type": "string", "description": "The image URL for the service" },
+        "icon": { "type": "string", "description": "The icon name for the service" },
+        "iconText": { "type": "string", "description": "The text next to the icon" },
+        "heroTitle": { "type": "string", "description": "The title for the service detail hero" },
+        "heroSubtitle": { "type": "string", "description": "The subtitle for the service detail hero" },
+        "whyNeedsThis": { "type": "string", "description": "Why the business needs this service" },
+        "benefits": { "type": "array", "items": { "type": "string" }, "description": "List of benefits" },
+        "offers": { "type": "array", "items": { "type": "string" }, "description": "List of what we offer" },
+        "pricing": { "type": "string", "description": "Pricing and packages" },
+        "ctaText": { "type": "string", "description": "Call to action text" },
+        "ctaLink": { "type": "string", "description": "Call to action link" }
+      },
+      "required": ["title", "description"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A project in the portfolio.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the project" },
+        "description": { "type": "string", "description": "The description of the project" },
+        "imageUrl": { "type": "string", "description": "The image URL for the project" },
+        "category": { "type": "string", "description": "The category of the project" },
+        "type": { "type": "string", "description": "The type of the project (web, mobile, desktop)" },
+        "projectLink": { "type": "string", "description": "The link to the project" }
+      },
+      "required": ["title", "description"]
     }
   },
   "firestore": {
@@ -51,6 +87,14 @@
     "/posts/{postId}/likes/{userId}": {
       "schema": { "$ref": "#/entities/Like" },
       "description": "Subcollection of likes for a specific post"
+    },
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Collection of services"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Collection of projects"
     }
   }
 }

@@ -9,11 +9,12 @@ export default function Contact() {
   const [generalSettings, setGeneralSettings] = useState({
     heroTitle: 'Powering\nBusiness Growth',
     heroSubtitle: 'We build powerful websites, mobile apps, and digital solutions that help businesses grow, reach more customers, and succeed in the digital world.',
-    email: 'contact@rftechsolutions.com',
-    phone: '+234 813 433 2534',
-    address: '98 Adatan Abeokuta, Ogun State Nigeria',
-    copyright: '© 2026 RF Tech Solutions. All Rights Reserved.',
-    heroBgUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop'
+    contactEmail: 'contact@rftech.ng',
+    contactPhone: '+234 813 433 2534',
+    contactAddress: '98 Adatan Abeokuta, Ogun State Nigeria',
+    footerText: '© 2026 RF Tech Solutions. All Rights Reserved.',
+    heroBackgroundImage: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop',
+    websiteLogo: ''
   });
 
   const [services, setServices] = useState<any[]>([]);
@@ -56,6 +57,8 @@ export default function Contact() {
       setIsSubmitting(false);
       setIsSubmitted(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
+      // In a real app, this would be sent via a backend service
+      console.log(`Form submitted to ${generalSettings.contactEmail}`);
     }, 1500);
   };
 
@@ -75,7 +78,11 @@ export default function Contact() {
       <nav className="fixed top-0 w-full px-6 py-6 md:px-12 flex justify-between items-center z-50 text-white bg-black/20 backdrop-blur-md border-b border-white/10">
         <div className="flex items-center gap-2">
           <Link to="/">
-            <Logo className="text-[12px] md:text-[16px]" light />
+            {generalSettings.websiteLogo ? (
+              <img src={generalSettings.websiteLogo} alt="RF Tech Solutions" className="h-8 md:h-10 w-auto" />
+            ) : (
+              <Logo className="text-[12px] md:text-[16px]" light />
+            )}
           </Link>
         </div>
         
@@ -141,7 +148,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h4 className="text-sm font-medium uppercase tracking-widest text-white mb-1">Phone</h4>
-                    <a href={`tel:${generalSettings.phone.replace(/\s+/g, '')}`} className="text-white/70 hover:text-white transition-colors">{generalSettings.phone}</a>
+                    <a href={`tel:${generalSettings.contactPhone.replace(/\s+/g, '')}`} className="text-white/70 hover:text-white transition-colors">{generalSettings.contactPhone}</a>
                   </div>
                 </div>
                 
@@ -161,7 +168,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h4 className="text-sm font-medium uppercase tracking-widest text-white mb-1">Email</h4>
-                    <a href={`mailto:${generalSettings.email}`} className="text-white/70 hover:text-white transition-colors">{generalSettings.email}</a>
+                    <a href={`mailto:${generalSettings.contactEmail}`} className="text-white/70 hover:text-white transition-colors">{generalSettings.contactEmail}</a>
                   </div>
                 </div>
 
@@ -181,7 +188,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h4 className="text-sm font-medium uppercase tracking-widest text-white mb-1">Business Hours</h4>
-                    <p className="text-white/70">Mon-Fri: 9AM - 6PM EST<br/>24/7 Support Available</p>
+                    <p className="text-white/70">Mon-Fri: 9AM - 6PM WAT<br/>24/7 Support Available</p>
                   </div>
                 </div>
               </div>
@@ -195,7 +202,7 @@ export default function Contact() {
             {isSubmitted ? (
               <div className="bg-green-500/20 border border-green-500/30 text-green-200 p-6 rounded-md text-center">
                 <h4 className="text-xl font-medium mb-2">Thank You!</h4>
-                <p className="font-light">Your message has been sent successfully. We will get back to you shortly.</p>
+                <p className="font-light">Your message has been sent successfully to {generalSettings.contactEmail}. We will get back to you shortly.</p>
                 <button 
                   onClick={() => setIsSubmitted(false)}
                   className="mt-6 text-sm uppercase tracking-widest border border-green-500/50 px-6 py-2 rounded hover:bg-green-500/20 transition-colors"
@@ -215,7 +222,7 @@ export default function Contact() {
                     onChange={handleChange}
                     required
                     className="w-full bg-black/20 border border-white/10 rounded px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-sky-400 transition-colors"
-                    placeholder="John Doe"
+                    placeholder="Ken Wensons"
                   />
                 </div>
                 
@@ -229,7 +236,7 @@ export default function Contact() {
                     onChange={handleChange}
                     required
                     className="w-full bg-black/20 border border-white/10 rounded px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-sky-400 transition-colors"
-                    placeholder="john@example.com"
+                    placeholder="ade@example.com"
                   />
                 </div>
                 
@@ -257,7 +264,7 @@ export default function Contact() {
                     required
                     rows={5}
                     className="w-full bg-black/20 border border-white/10 rounded px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-sky-400 transition-colors resize-none"
-                    placeholder="Tell us about your project..."
+                    placeholder="Ken Wensons"
                   ></textarea>
                 </div>
                 
@@ -322,27 +329,27 @@ export default function Contact() {
             <ul className="space-y-6 text-sm font-light">
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="text-[#00d084] shrink-0 mt-1" />
-                <span>{generalSettings.address}</span>
+                <span>{generalSettings.contactAddress}</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-3">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#00d084] shrink-0"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                    <a href={`tel:${generalSettings.phone.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{generalSettings.phone}</a>
+                    <a href={`tel:${generalSettings.contactPhone.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{generalSettings.contactPhone}</a>
                   </div>
                   <a href="https://wa.me/2348134332534" target="_blank" rel="noopener noreferrer" className="text-[#00d084] text-xs mt-1 ml-7 hover:underline">WhatsApp Us</a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
                 <Mail size={18} className="text-[#00d084] shrink-0 mt-1" />
-                <a href={`mailto:${generalSettings.email}`} className="hover:text-white transition-colors">{generalSettings.email}</a>
+                <a href={`mailto:${generalSettings.contactEmail}`} className="hover:text-white transition-colors">{generalSettings.contactEmail}</a>
               </li>
             </ul>
           </div>
           
           {/* Copyright */}
           <div className="col-span-1 md:col-span-2 lg:col-span-4 border-t border-white/10 pt-8 mt-4 text-center text-sm font-light text-white/60">
-            {generalSettings.copyright.split('RF').map((part, i, arr) => (
+            {generalSettings.footerText.split('RF').map((part, i, arr) => (
               <React.Fragment key={i}>
                 {part}
                 {i < arr.length - 1 && <Link to="/admin" className="hover:text-white transition-colors">RF</Link>}

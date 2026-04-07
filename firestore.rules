@@ -6,13 +6,12 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    function isAdmin() {
-      return isAuthenticated() && 
-        request.auth.token.email != null &&
-        request.auth.token.email.lower() == 'kenwem@yahoo.com';
-    }
 
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == "kenwem@yahoo.com" && request.auth.token.email_verified == true);
+    }
+    
     match /sites/siteA {
       // General settings
       match /settings/general {
@@ -33,11 +32,18 @@ service cloud.firestore {
         
         // Comments
         match /comments/{commentId} {
-          allow read: if true; // Frontend filters by status
-          allow create: if isAuthenticated() && 
-            request.resource.data.status == (isAdmin() ? 'approved' : 'pending') &&
-            request.resource.data.userId == request.auth.uid;
-          allow update, delete: if isAdmin();
+          allow read: if true;
+          allow create: if isAuthenticated();
+          allow update: if isAdmin();
+          allow delete: if isAdmin();
+          
+          // Replies
+          match /replies/{replyId} {
+            allow read: if true;
+            allow create: if isAuthenticated();
+            allow update: if isAdmin();
+            allow delete: if isAdmin();
+          }
         }
       }
 
