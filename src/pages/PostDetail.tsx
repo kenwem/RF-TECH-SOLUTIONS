@@ -824,7 +824,14 @@ export default function PostDetail() {
             {generalSettings.footerText.split('RF').map((part, i, arr) => (
               <Fragment key={i}>
                 {part}
-                {i < arr.length - 1 && <Link to="/admin" className="hover:text-zinc-600 transition-colors">RF</Link>}
+                {i < arr.length - 1 && (
+                  <span 
+                    onClick={() => navigate('/admin')} 
+                    className="hover:text-zinc-600 transition-colors cursor-pointer"
+                  >
+                    RF
+                  </span>
+                )}
               </Fragment>
             ))}
           </div>

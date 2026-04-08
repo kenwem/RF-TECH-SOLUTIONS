@@ -4,7 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { Globe, MapPin, Users, Code, Smartphone, PenTool, Search, Share2, FileText, ArrowDown, Monitor, Mail, Menu, X, ArrowRight } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, onSnapshot, doc } from 'firebase/firestore';
 
@@ -32,6 +32,7 @@ export default function Home() {
   ];
 
   const [services, setServices] = useState(defaultServices);
+  const navigate = useNavigate();
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -316,7 +317,7 @@ export default function Home() {
       <div className="wrapper">
         
         {/* HERO SECTION */}
-        <section className="h-screen relative flex items-center justify-center overflow-hidden bg-[#050505]">
+        <section className="h-screen min-h-[500px] relative flex items-center justify-center overflow-hidden bg-[#050505]">
           <img 
             src={generalSettings.heroBackgroundImage || "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2670&auto=format&fit=crop"} 
             className="absolute inset-0 w-full h-full object-cover hero-img opacity-70" 
@@ -325,10 +326,10 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-[#0a6ba0] z-0"></div>
           
-          <div className="relative z-10 text-center text-white w-full px-4 flex flex-col items-center">
+          <div className="relative z-10 text-center text-white w-full px-4 flex flex-col items-center pt-16 md:pt-0">
             
-            <h1 className="display text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-[6.5rem] leading-[1.1] font-medium tracking-tight-custom hero-text overflow-hidden text-white drop-shadow-lg w-full text-center px-4">
-              <span className="block translate-y-full whitespace-nowrap" dangerouslySetInnerHTML={{ __html: generalSettings.heroTitle.replace(/\n/g, '<br/>') }}></span>
+            <h1 className="display text-4xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-[6.5rem] leading-[1.1] font-medium tracking-tight-custom hero-text overflow-hidden text-white drop-shadow-lg w-full text-center px-4">
+              <span className="block translate-y-full" dangerouslySetInnerHTML={{ __html: generalSettings.heroTitle.replace(/\n/g, '<br/>') }}></span>
             </h1>
             
             <p className="mt-8 text-base md:text-lg lg:text-xl font-semibold text-white max-w-3xl mx-auto hero-fade opacity-0 leading-relaxed drop-shadow-lg">
@@ -524,7 +525,14 @@ export default function Home() {
             {generalSettings.footerText.split('RF').map((part, i, arr) => (
               <React.Fragment key={i}>
                 {part}
-                {i < arr.length - 1 && <Link to="/admin" className="hover:text-white transition-colors">RF</Link>}
+                {i < arr.length - 1 && (
+                  <span 
+                    onClick={() => navigate('/admin')} 
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
+                    RF
+                  </span>
+                )}
               </React.Fragment>
             ))}
           </div>

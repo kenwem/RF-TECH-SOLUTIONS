@@ -1,5 +1,5 @@
 import { useEffect, useState, Fragment } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, MapPin, Mail, Menu, X, Heart, MessageSquare, Phone } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { db } from '../firebase';
@@ -54,6 +54,7 @@ export default function Blog() {
   const [posts, setPosts] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -247,7 +248,14 @@ export default function Blog() {
             {generalSettings.footerText.split('RF').map((part, i, arr) => (
               <Fragment key={i}>
                 {part}
-                {i < arr.length - 1 && <Link to="/admin" className="hover:text-zinc-600 transition-colors">RF</Link>}
+                {i < arr.length - 1 && (
+                  <span 
+                    onClick={() => navigate('/admin')} 
+                    className="hover:text-zinc-600 transition-colors cursor-pointer"
+                  >
+                    RF
+                  </span>
+                )}
               </Fragment>
             ))}
           </p>

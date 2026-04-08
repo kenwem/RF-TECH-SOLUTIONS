@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ExternalLink, Smartphone, Monitor, Globe, MapPin, Mail, Menu, X, Search, Phone } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { db } from '../firebase';
@@ -19,6 +19,7 @@ export default function OurWork() {
 
   const [services, setServices] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
+  const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -265,7 +266,14 @@ export default function OurWork() {
             {generalSettings.footerText.split('RF').map((part, i, arr) => (
               <Fragment key={i}>
                 {part}
-                {i < arr.length - 1 && <Link to="/admin" className="hover:text-zinc-600 transition-colors">RF</Link>}
+                {i < arr.length - 1 && (
+                  <span 
+                    onClick={() => navigate('/admin')} 
+                    className="hover:text-zinc-600 transition-colors cursor-pointer"
+                  >
+                    RF
+                  </span>
+                )}
               </Fragment>
             ))}
           </div>
