@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ExternalLink, Smartphone, Monitor, Globe, MapPin, Mail, Menu, X, Search } from 'lucide-react';
+import { ArrowRight, ExternalLink, Smartphone, Monitor, Globe, MapPin, Mail, Menu, X, Search, Phone } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { db } from '../firebase';
 import { collection, onSnapshot, doc } from 'firebase/firestore';
@@ -68,65 +68,66 @@ export default function OurWork() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--c-bg)] text-white font-sans selection:bg-sky-500/30">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-sky-100 selection:text-sky-900">
       {/* NAVBAR */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-6 bg-[var(--c-bg)]/90 backdrop-blur-md border-b border-white/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 bg-white/80 backdrop-blur-md border-b border-zinc-200">
         <Link to="/">
           {generalSettings.websiteLogo ? (
             <img src={generalSettings.websiteLogo} alt="RF Tech Solutions" className="h-8 md:h-10 w-auto" />
           ) : (
-            <Logo className="text-[10px]" light />
+            <Logo className="text-[10px]" />
           )}
         </Link>
 
         {/* Mobile Menu Toggle */}
         <button 
-          className="md:hidden text-white z-50"
+          className="md:hidden text-zinc-900 z-50"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
         {/* Desktop Menu */}
-        <div className="hidden md:flex gap-8 text-xs font-medium uppercase tracking-widest text-white/80">
-          <Link to="/" className="hover:text-white transition-colors">Home</Link>
-          <Link to="/#about" className="hover:text-white transition-colors">About</Link>
-          <Link to="/#services" className="hover:text-white transition-colors">Services</Link>
-          <Link to="/#blog" className="hover:text-white transition-colors">Blog</Link>
-          <Link to="/our-work" className="text-white transition-colors">Our Work</Link>
-          <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
+        <div className="hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest text-zinc-500">
+          <Link to="/" className="hover:text-sky-600 transition-colors">Home</Link>
+          <Link to="/about" className="hover:text-sky-600 transition-colors">About</Link>
+          <Link to="/services" className="hover:text-sky-600 transition-colors">Services</Link>
+          <Link to="/blog" className="hover:text-sky-600 transition-colors">Blog</Link>
+          <Link to="/our-work" className="text-sky-600 transition-colors">Our Work</Link>
+          <Link to="/contact" className="hover:text-sky-600 transition-colors">Contact</Link>
         </div>
         <div className="hidden md:flex items-center gap-4">
-          <Link to="/contact" className="border border-white/20 px-5 py-2 text-xs uppercase tracking-widest hover:bg-white hover:text-sky-600 transition-colors rounded-sm">
+          <Link to="/contact" className="bg-sky-600 text-white px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-sky-700 transition-all rounded-xl shadow-lg shadow-sky-100">
             Schedule Consultation
           </Link>
         </div>
 
         {/* Mobile Menu Dropdown */}
         {isMobileMenuOpen && (
-          <div className="absolute top-full left-0 w-full bg-[var(--c-bg)] border-t border-white/10 flex flex-col py-4 px-6 gap-4 md:hidden shadow-xl">
-            <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Home</Link>
-            <Link to="/#about" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">About</Link>
-            <Link to="/#services" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Services</Link>
-            <Link to="/#blog" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Blog</Link>
-            <Link to="/our-work" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Our Work</Link>
-            <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Contact</Link>
+          <div className="absolute top-full left-0 w-full bg-white border-t border-zinc-100 flex flex-col py-6 px-6 gap-4 md:hidden shadow-2xl">
+            <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest text-zinc-600 hover:text-sky-600 py-2">Home</Link>
+            <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest text-zinc-600 hover:text-sky-600 py-2">About</Link>
+            <Link to="/services" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest text-zinc-600 hover:text-sky-600 py-2">Services</Link>
+            <Link to="/blog" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest text-zinc-600 hover:text-sky-600 py-2">Blog</Link>
+            <Link to="/our-work" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest text-sky-600 py-2">Our Work</Link>
+            <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest text-zinc-600 hover:text-sky-600 py-2">Contact</Link>
           </div>
         )}
       </nav>
 
       {/* HERO SECTION */}
-      <section className="pt-32 pb-12 px-6 md:px-12 relative">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="max-w-3xl">
-            <div className="text-xs uppercase tracking-[0.2em] mb-6 text-sky-400 font-bold flex items-center gap-3">
-              <span className="w-8 h-[1px] bg-sky-400"></span>
+      <section className="pt-40 pb-20 px-6 md:px-12 relative">
+        <div className="max-w-[1400px] mx-auto text-center">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-xs uppercase tracking-[0.2em] mb-6 text-sky-600 font-bold flex items-center justify-center gap-3">
+              <span className="w-8 h-[1px] bg-sky-600"></span>
               Portfolio
+              <span className="w-8 h-[1px] bg-sky-600"></span>
             </div>
-            <h1 className="display text-5xl md:text-7xl font-medium tracking-tight-custom mb-8 leading-[1.1]">
+            <h1 className="display text-5xl md:text-8xl font-bold tracking-tight text-zinc-900 mb-8 leading-tight">
               Our Work
             </h1>
-            <p className="text-lg md:text-xl text-white/70 font-light leading-relaxed mb-10 max-w-2xl">
+            <p className="text-lg md:text-xl text-zinc-500 font-medium leading-relaxed mb-10 max-w-2xl mx-auto">
               Explore our portfolio of successful projects. From custom web applications to robust mobile and desktop solutions, we deliver excellence across all platforms.
             </p>
           </div>
@@ -134,32 +135,32 @@ export default function OurWork() {
       </section>
 
       {/* PROJECTS GRID */}
-      <section className="py-12 px-6 md:px-12 bg-white/5">
+      <section className="py-20 px-6 md:px-12 bg-white border-y border-zinc-200">
         <div className="max-w-[1400px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
             {projects.map((project) => (
-              <div key={project.id} className="group bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-sky-500/50 transition-colors flex flex-col">
+              <div key={project.id} className="group bg-white border border-zinc-200 rounded-3xl overflow-hidden hover:shadow-2xl hover:shadow-zinc-200/50 transition-all duration-500 flex flex-col hover:-translate-y-1">
                 <div 
-                  className="h-64 overflow-hidden relative cursor-zoom-in"
+                  className="h-72 overflow-hidden relative cursor-zoom-in"
                   onClick={() => setSelectedImage(getDirectImgurUrl(project.imageUrl))}
                 >
                   <img 
                     src={getDirectImgurUrl(project.imageUrl) || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop'} 
                     alt={project.title} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="absolute inset-0 bg-zinc-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                     <Search className="text-white" size={32} />
                   </div>
-                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md p-2 rounded-full text-white">
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2.5 rounded-2xl text-sky-600 shadow-sm border border-white/20">
                     {getIcon(project.type)}
                   </div>
                 </div>
                 <div className="p-8 flex-1 flex flex-col">
-                  <div className="text-xs uppercase tracking-widest text-sky-400 mb-3 font-medium">{project.category}</div>
-                  <h3 className="text-2xl font-medium display tracking-tight-custom mb-4 text-white">{project.title}</h3>
-                  <p className="text-white/70 font-light text-sm leading-relaxed mb-8 flex-1">
+                  <div className="text-xs uppercase tracking-widest text-sky-600 mb-4 font-bold">{project.category}</div>
+                  <h3 className="text-2xl font-bold display tracking-tight text-zinc-900 mb-4 leading-tight">{project.title}</h3>
+                  <p className="text-zinc-500 font-normal text-base leading-relaxed mb-8 flex-1">
                     {project.description}
                   </p>
                   {project.projectLink && project.projectLink !== '#' && project.projectLink.trim() !== '' && (
@@ -167,7 +168,7 @@ export default function OurWork() {
                       href={project.projectLink} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm font-medium text-white hover:text-sky-400 transition-colors mt-auto"
+                      className="inline-flex items-center gap-2 text-sm font-bold text-sky-600 hover:text-sky-700 transition-colors mt-auto uppercase tracking-widest"
                     >
                       View Project <ExternalLink size={16} />
                     </a>
@@ -177,8 +178,10 @@ export default function OurWork() {
             ))}
             
             {projects.length === 0 && (
-              <div className="col-span-full text-center py-20 text-white/50">
-                No projects found. Check back later!
+              <div className="col-span-full text-center py-32 bg-zinc-50 rounded-[2rem] border-2 border-dashed border-zinc-200">
+                <p className="text-zinc-400 font-bold uppercase tracking-widest text-sm">
+                  No projects found. Check back later!
+                </p>
               </div>
             )}
           </div>
@@ -188,83 +191,82 @@ export default function OurWork() {
       {/* CTA SECTION */}
       <section className="py-32 px-6 md:px-12 text-center">
         <div className="max-w-3xl mx-auto">
-          <h2 className="display text-4xl md:text-6xl font-medium tracking-tight-custom mb-8">Ready to start your project?</h2>
-          <p className="text-white/70 font-light text-lg mb-10">Let's discuss how we can bring your ideas to life with our expertise.</p>
-          <Link to="/contact" className="inline-flex items-center gap-3 bg-white text-black px-8 py-4 rounded-full font-medium hover:bg-sky-50 transition-colors">
-            Contact Us <ArrowRight size={18} />
+          <h2 className="display text-4xl md:text-7xl font-bold tracking-tight text-zinc-900 mb-8 leading-tight">Ready to start your project?</h2>
+          <p className="text-zinc-500 font-medium text-lg mb-12 leading-relaxed">Let's discuss how we can bring your ideas to life with our expertise.</p>
+          <Link to="/contact" className="inline-flex items-center gap-3 bg-sky-600 text-white px-10 py-5 rounded-2xl font-bold hover:bg-sky-700 transition-all shadow-xl shadow-sky-100 active:scale-95">
+            Contact Us <ArrowRight size={20} />
           </Link>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer id="contact" className="bg-[var(--c-bg)] text-white/80 py-16 px-6 md:px-12 relative z-10 border-t border-white/10">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+      <footer id="contact" className="bg-white text-zinc-600 py-20 px-6 md:px-12 relative z-10 border-t border-zinc-200">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16">
           
           {/* Column 1: Logo & About */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Link to="/" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-              <Logo className="text-[8px]" light />
+              <Logo className="text-[10px]" />
             </Link>
-            <p className="text-sm leading-relaxed font-light mt-4">
+            <p className="text-base leading-relaxed font-normal text-zinc-500">
               {generalSettings.heroSubtitle}
             </p>
           </div>
 
           {/* Column 2: Quick Links */}
           <div>
-            <h4 className="text-lg font-bold text-white mb-6">Quick Links</h4>
-            <ul className="space-y-4 text-sm font-light">
-              <li><Link to="/" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Home</Link></li>
-              <li><Link to="/#about" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> About Us</Link></li>
-              <li><Link to="/#services" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Services</Link></li>
-              <li><Link to="/#blog" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Blog</Link></li>
-              <li><Link to="/our-work" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Our Work</Link></li>
-              <li><Link to="/contact" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Contact</Link></li>
-              <li><Link to="/sitemap" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Sitemap</Link></li>
+            <h4 className="text-lg font-bold text-zinc-900 mb-8">Quick Links</h4>
+            <ul className="space-y-4 text-base font-medium">
+              <li><Link to="/" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-sky-600 transition-colors flex items-center gap-2">Home</Link></li>
+              <li><Link to="/about" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-sky-600 transition-colors flex items-center gap-2">About Us</Link></li>
+              <li><Link to="/services" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-sky-600 transition-colors flex items-center gap-2">Services</Link></li>
+              <li><Link to="/blog" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-sky-600 transition-colors flex items-center gap-2">Blog</Link></li>
+              <li><Link to="/our-work" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-sky-600 transition-colors flex items-center gap-2">Our Work</Link></li>
+              <li><Link to="/contact" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-sky-600 transition-colors flex items-center gap-2">Contact</Link></li>
             </ul>
           </div>
 
           {/* Column 3: Our Services */}
           <div>
-            <h4 className="text-lg font-bold text-white mb-6">Our Services</h4>
-            <ul className="space-y-4 text-sm font-light">
+            <h4 className="text-lg font-bold text-zinc-900 mb-8">Our Services</h4>
+            <ul className="space-y-4 text-base font-medium">
               {services.map((service) => (
-                <li key={service.id}><Link to="/#services" className="hover:text-white transition-colors">{service.title}</Link></li>
+                <li key={service.id}><Link to={`/service/${service.id}`} className="hover:text-sky-600 transition-colors">{service.title}</Link></li>
               ))}
             </ul>
           </div>
 
           {/* Column 4: Contact Us */}
           <div>
-            <h4 className="text-lg font-bold text-white mb-6">Contact Us</h4>
-            <ul className="space-y-6 text-sm font-light">
-              <li className="flex items-start gap-3">
-                <MapPin size={18} className="text-[#00d084] shrink-0 mt-1" />
+            <h4 className="text-lg font-bold text-zinc-900 mb-8">Contact Us</h4>
+            <ul className="space-y-6 text-base font-normal">
+              <li className="flex items-start gap-4">
+                <MapPin size={20} className="text-sky-600 shrink-0 mt-1" />
                 <span>{generalSettings.contactAddress}</span>
               </li>
-              <li className="flex items-start gap-3">
+              <li className="flex items-start gap-4">
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-3">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#00d084] shrink-0"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                    <a href={`tel:${generalSettings.contactPhone.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{generalSettings.contactPhone}</a>
+                  <div className="flex items-center gap-4">
+                    <Phone size={20} className="text-sky-600 shrink-0 mt-1" />
+                    <a href={`tel:${generalSettings.contactPhone.replace(/\s+/g, '')}`} className="hover:text-sky-600 transition-colors">{generalSettings.contactPhone}</a>
                   </div>
-                  <a href="https://wa.me/2348134332534" target="_blank" rel="noopener noreferrer" className="text-[#00d084] text-xs mt-1 ml-7 hover:underline">WhatsApp Us</a>
+                  <a href="https://wa.me/2348134332534" target="_blank" rel="noopener noreferrer" className="text-sky-600 text-xs mt-1 ml-9 hover:underline">WhatsApp Us</a>
                 </div>
               </li>
-              <li className="flex items-start gap-3">
-                <Mail size={18} className="text-[#00d084] shrink-0 mt-1" />
-                <a href={`mailto:${generalSettings.contactEmail}`} className="hover:text-white transition-colors">{generalSettings.contactEmail}</a>
+              <li className="flex items-start gap-4">
+                <Mail size={20} className="text-sky-600 shrink-0 mt-1" />
+                <a href={`mailto:${generalSettings.contactEmail}`} className="hover:text-sky-600 transition-colors">{generalSettings.contactEmail}</a>
               </li>
             </ul>
           </div>
           
           {/* Copyright */}
-          <div className="col-span-1 md:col-span-2 lg:col-span-4 border-t border-white/10 pt-8 mt-4 text-center text-sm font-light text-white/60">
+          <div className="col-span-1 md:col-span-2 lg:col-span-4 border-t border-zinc-100 pt-12 mt-8 text-center text-sm font-medium text-zinc-400 uppercase tracking-widest">
             {generalSettings.footerText.split('RF').map((part, i, arr) => (
-              <React.Fragment key={i}>
+              <Fragment key={i}>
                 {part}
-                {i < arr.length - 1 && <Link to="/admin" className="hover:text-white transition-colors">RF</Link>}
-              </React.Fragment>
+                {i < arr.length - 1 && <Link to="/admin" className="hover:text-zinc-600 transition-colors">RF</Link>}
+              </Fragment>
             ))}
           </div>
         </div>

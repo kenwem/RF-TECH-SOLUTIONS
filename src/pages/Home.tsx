@@ -287,8 +287,8 @@ export default function Home() {
         {/* Desktop Menu */}
         <div className="hidden md:flex gap-8 text-xs font-medium uppercase tracking-widest text-white/80">
           <Link to="/" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-white transition-colors">Home</Link>
-          <Link to="/#about" onClick={(e) => handleHashScroll(e, '#about')} className="hover:text-white transition-colors">About</Link>
-          <Link to="/#services" onClick={(e) => handleHashScroll(e, '#services')} className="hover:text-white transition-colors">Services</Link>
+          <Link to="/about" className="hover:text-white transition-colors">About</Link>
+          <Link to="/services" className="hover:text-white transition-colors">Services</Link>
           <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
           <Link to="/our-work" className="hover:text-white transition-colors">Our Work</Link>
           <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
@@ -303,8 +303,8 @@ export default function Home() {
         {isMobileMenuOpen && (
           <div className="absolute top-full left-0 w-full bg-[var(--c-bg)] border-t border-white/10 flex flex-col py-4 px-6 gap-4 md:hidden shadow-xl">
             <Link to="/" onClick={() => { window.scrollTo({top: 0, behavior: 'smooth'}); setIsMobileMenuOpen(false); }} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Home</Link>
-            <Link to="/#about" onClick={(e) => { handleHashScroll(e, '#about'); setIsMobileMenuOpen(false); }} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">About</Link>
-            <Link to="/#services" onClick={(e) => { handleHashScroll(e, '#services'); setIsMobileMenuOpen(false); }} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Services</Link>
+            <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">About</Link>
+            <Link to="/services" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Services</Link>
             <Link to="/blog" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Blog</Link>
             <Link to="/our-work" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Our Work</Link>
             <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium uppercase tracking-widest text-white/80 hover:text-white py-2">Contact</Link>
@@ -476,8 +476,8 @@ export default function Home() {
             <h4 className="text-lg font-bold text-white mb-6">Quick Links</h4>
             <ul className="space-y-4 text-sm font-light">
               <li><Link to="/" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Home</Link></li>
-              <li><a href="#about" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> About Us</a></li>
-              <li><a href="#services" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Services</a></li>
+              <li><Link to="/about" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> About Us</Link></li>
+              <li><Link to="/services" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Services</Link></li>
               <li><Link to="/blog" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Blog</Link></li>
               <li><Link to="/our-work" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Our Work</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors flex items-center gap-2"><span className="text-sky-400">→</span> Contact</Link></li>
@@ -490,7 +490,7 @@ export default function Home() {
             <h4 className="text-lg font-bold text-white mb-6">Our Services</h4>
             <ul className="space-y-4 text-sm font-light">
               {services.map(service => (
-                <li key={service.id}><a href="#services" className="hover:text-white transition-colors">{service.title}</a></li>
+                <li key={service.id}><Link to={`/service/${service.id}`} className="hover:text-white transition-colors">{service.title}</Link></li>
               ))}
             </ul>
           </div>

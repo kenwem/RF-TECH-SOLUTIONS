@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from './firebase';
 import { Toaster } from 'sonner';
 
 // Lazy load components to prevent blank page flash and improve performance
@@ -10,6 +11,8 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const Contact = lazy(() => import('./pages/Contact'));
 const OurWork = lazy(() => import('./pages/OurWork'));
+const About = lazy(() => import('./pages/About'));
+const Services = lazy(() => import('./pages/Services'));
 const Sitemap = lazy(() => import('./pages/Sitemap'));
 const PostDetail = lazy(() => import('./pages/PostDetail'));
 const Blog = lazy(() => import('./pages/Blog'));
@@ -54,6 +57,24 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 };
 
 export default function App() {
+  useEffect(() => {
+    // Fetch General Settings for Favicon
+    const unsubscribe = onSnapshot(doc(db, 'sites/siteA/settings/general'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.websiteLogo) {
+          const link: HTMLLinkElement = document.querySelector("link[rel*='icon']") || document.createElement('link');
+          link.type = 'image/x-icon';
+          link.rel = 'shortcut icon';
+          link.href = data.websiteLogo;
+          document.getElementsByTagName('head')[0].appendChild(link);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   return (
     <Router>
       <Toaster 
@@ -77,11 +98,13 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/services" element={<Services />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/our-work" element={<OurWork />} />
           <Route path="/sitemap" element={<Sitemap />} />
           <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:id" element={<PostDetail />} />
+          <Route path="/blog/:slug" element={<PostDetail />} />
           <Route path="/service/:id" element={<ServiceDetail />} />
           {/* Fallback for clean URLs - redirect any unknown route to home or 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />

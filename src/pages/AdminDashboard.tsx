@@ -15,6 +15,31 @@ export default function AdminDashboard() {
   const [allComments, setAllComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const siteAdminEmail = 'kenwem@yahoo.com';
+
+  // Inactivity Timeout (30 minutes)
+  useEffect(() => {
+    let timeoutId: any;
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        toast.info("Session expired due to inactivity.");
+        handleLogout();
+      }, 30 * 60 * 1000); // 30 minutes
+    };
+
+    // Events to track activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    resetTimer(); // Initialize timer
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
@@ -29,9 +54,8 @@ export default function AdminDashboard() {
         email: firebaseUser.email,
         uid: firebaseUser.uid
       });
-      const adminEmail = 'kenwem@yahoo.com';
       const userEmail = firebaseUser.email?.toLowerCase().trim();
-      if (!userEmail || userEmail !== adminEmail) {
+      if (!userEmail || userEmail !== siteAdminEmail) {
         console.warn("User is not admin:", userEmail);
         setLoadingComments(false);
         return;
@@ -196,6 +220,7 @@ export default function AdminDashboard() {
     slug: '',
     image: '', 
     content: '',
+    metaDescription: '',
     status: 'Draft',
     publishDate: '',
     featured: false,
@@ -446,6 +471,7 @@ export default function AdminDashboard() {
         slug: post.slug || '',
         image: post.image || '',
         content: post.content || '',
+        metaDescription: post.metaDescription || '',
         status: post.status || 'Draft',
         publishDate: post.publishDate || post.date || '',
         featured: post.featured || false,
@@ -460,6 +486,7 @@ export default function AdminDashboard() {
         slug: '',
         image: '',
         content: '',
+        metaDescription: '',
         status: 'Draft',
         publishDate: today,
         featured: false,
@@ -471,15 +498,27 @@ export default function AdminDashboard() {
     setIsPostModalOpen(true);
   };
 
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
   const handleSavePost = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const finalSlug = postFormData.slug || generateSlug(postFormData.title);
+      const dataToSave = { ...postFormData, slug: finalSlug };
+
       if (editingPost) {
-        await setDoc(doc(db, 'sites/siteA/posts', editingPost.id), postFormData);
+        await setDoc(doc(db, 'sites/siteA/posts', editingPost.id), dataToSave);
         toast.success('Post updated successfully!');
       } else {
         const newPostRef = doc(collection(db, 'sites/siteA/posts'));
-        await setDoc(newPostRef, { ...postFormData, createdAt: serverTimestamp() });
+        await setDoc(newPostRef, { ...dataToSave, createdAt: serverTimestamp() });
         toast.success('Post created successfully!');
       }
       setIsPostModalOpen(false);
@@ -757,6 +796,10 @@ export default function AdminDashboard() {
         </nav>
 
         <div className="p-4 border-t border-gray-200 space-y-2">
+          <div className="px-4 py-2 mb-2 bg-gray-50 rounded-lg border border-gray-100">
+            <div className="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1">Logged in as</div>
+            <div className="text-xs font-bold text-gray-700 truncate">{user?.email}</div>
+          </div>
           <Link to="/" className="flex items-center gap-2 text-sm text-gray-500 hover:text-sky-600 transition-colors px-4 py-2">
             <ArrowLeft size={16} />
             Back to Website
@@ -1015,7 +1058,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-4">
                           {generalSettings.heroBackgroundImage && (
                             <div className="relative">
-                              <img src={generalSettings.heroBackgroundImage} alt="Hero Background" className="w-24 h-16 object-cover rounded border border-gray-200" />
+                              <img src={getDirectImgurUrl(generalSettings.heroBackgroundImage)} alt="Hero Background" className="w-24 h-16 object-cover rounded border border-gray-200" />
                               <button 
                                 type="button" 
                                 onClick={() => setGeneralSettings({ ...generalSettings, heroBackgroundImage: '' })}
@@ -1056,7 +1099,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-4">
                           {generalSettings.websiteLogo && (
                             <div className="relative">
-                              <img src={generalSettings.websiteLogo} alt="Logo" className="w-auto h-8 object-contain bg-black p-1 rounded" />
+                              <img src={getDirectImgurUrl(generalSettings.websiteLogo)} alt="Logo" className="w-auto h-8 object-contain bg-black p-1 rounded" />
                               <button 
                                 type="button" 
                                 onClick={() => setGeneralSettings({ ...generalSettings, websiteLogo: '' })}
@@ -1245,8 +1288,12 @@ export default function AdminDashboard() {
                         </p>
                         <div className="mt-3 ml-13 flex items-center gap-4 text-[10px] text-gray-400 uppercase tracking-widest">
                           <span>{comment.createdAt?.toDate().toLocaleString()}</span>
-                          <span>•</span>
-                          <span className="font-bold text-sky-600">Post ID: {comment.path.split('/')[1]}</span>
+                          {comment.path.split('/')[1] !== 'siteA' && (
+                            <>
+                              <span>•</span>
+                              <span className="font-bold text-sky-600">Post ID: {comment.path.split('/')[1]}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1317,7 +1364,14 @@ export default function AdminDashboard() {
                           type="text" 
                           required
                           value={postFormData.title}
-                          onChange={(e) => setPostFormData({...postFormData, title: e.target.value})}
+                          onChange={(e) => {
+                            const newTitle = e.target.value;
+                            setPostFormData({
+                              ...postFormData, 
+                              title: newTitle,
+                              slug: editingPost ? postFormData.slug : generateSlug(newTitle)
+                            });
+                          }}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
                           placeholder="Post title"
                         />
@@ -1355,7 +1409,7 @@ export default function AdminDashboard() {
                         </div>
                         {postFormData.image && (
                           <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200 mt-2 relative">
-                            <img src={postFormData.image} alt="Cover Preview" className="w-full h-full object-cover" />
+                            <img src={getDirectImgurUrl(postFormData.image)} alt="Cover Preview" className="w-full h-full object-cover" />
                             <button 
                               type="button" 
                               onClick={() => setPostFormData({ ...postFormData, image: '' })}
@@ -1384,7 +1438,19 @@ export default function AdminDashboard() {
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
                       <h4 className="font-medium text-gray-800 border-b pb-2">SEO Settings</h4>
                       <p className="text-sm text-gray-500">Configure how your post appears in search engine results.</p>
-                      {/* Add SEO fields here if needed later */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description</label>
+                        <textarea 
+                          rows={4}
+                          value={postFormData.metaDescription}
+                          onChange={(e) => setPostFormData({...postFormData, metaDescription: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm"
+                          placeholder="Brief summary for search engines (150-160 characters recommended)"
+                        ></textarea>
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          {postFormData.metaDescription.length} characters
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -1393,7 +1459,7 @@ export default function AdminDashboard() {
                       <h4 className="font-medium text-gray-800 border-b pb-2">Post Preview</h4>
                       <div className="prose max-w-none">
                         <h1>{postFormData.title || 'Untitled Post'}</h1>
-                        {postFormData.image && <img src={postFormData.image} alt="Preview" className="w-full rounded-lg my-4" />}
+                        {postFormData.image && <img src={getDirectImgurUrl(postFormData.image)} alt="Preview" className="w-full rounded-lg my-4" />}
                         <div dangerouslySetInnerHTML={{ __html: postFormData.content || '<p>No content yet.</p>' }} />
                       </div>
                     </div>
@@ -1564,7 +1630,7 @@ export default function AdminDashboard() {
                 </div>
                 {serviceFormData.imageUrl && (
                   <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 mt-2 relative">
-                    <img src={serviceFormData.imageUrl} alt="Service Preview" className="w-full h-full object-cover" />
+                    <img src={getDirectImgurUrl(serviceFormData.imageUrl)} alt="Service Preview" className="w-full h-full object-cover" />
                     <button 
                       type="button" 
                       onClick={() => setServiceFormData({ ...serviceFormData, imageUrl: '' })}
